@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
 type Row = any;
@@ -12,39 +12,43 @@ function fmtDate(v: any) {
   return d.toLocaleString();
 }
 
+function cn(...xs: Array<string | false | undefined | null>) {
+  return xs.filter(Boolean).join(" ");
+}
+
 function Badge({ text, title }: { text: string; title?: string }) {
   const t = (text ?? "").toString();
-
   const lower = t.toLowerCase();
 
-  // Existing status colors (allotted/registered/pending)
-  const statusBg =
-    lower.includes("allotted") ? "#173a2a" :
-    lower.includes("registered") ? "#1d2a45" :
-    lower.includes("pending") ? "#3a2c16" :
-    "#222";
-
-  const statusBd =
-    lower.includes("allotted") ? "#2e7d54" :
-    lower.includes("registered") ? "#3b6bb8" :
-    lower.includes("pending") ? "#a57a2a" :
-    "#333";
-
-  // Email status colors (not_sent/sent/failed)
   const isEmail = ["not_sent", "sent", "failed"].includes(lower);
 
-  const emailBg =
-    lower === "sent" ? "#173a2a" :
-    lower === "failed" ? "#2a1515" :
-    "#1d2a45";
+  const bg = isEmail
+    ? lower === "sent"
+      ? "rgba(46,125,84,0.18)"
+      : lower === "failed"
+      ? "rgba(122,46,46,0.18)"
+      : "rgba(59,107,184,0.16)"
+    : lower.includes("allotted")
+    ? "rgba(46,125,84,0.18)"
+    : lower.includes("registered")
+    ? "rgba(59,107,184,0.16)"
+    : lower.includes("pending")
+    ? "rgba(165,122,42,0.18)"
+    : "rgba(255,255,255,0.06)";
 
-  const emailBd =
-    lower === "sent" ? "#2e7d54" :
-    lower === "failed" ? "#7a2e2e" :
-    "#3b6bb8";
-
-  const bg = isEmail ? emailBg : statusBg;
-  const bd = isEmail ? emailBd : statusBd;
+  const bd = isEmail
+    ? lower === "sent"
+      ? "rgba(46,125,84,0.6)"
+      : lower === "failed"
+      ? "rgba(122,46,46,0.7)"
+      : "rgba(59,107,184,0.65)"
+    : lower.includes("allotted")
+    ? "rgba(46,125,84,0.6)"
+    : lower.includes("registered")
+    ? "rgba(59,107,184,0.65)"
+    : lower.includes("pending")
+    ? "rgba(165,122,42,0.7)"
+    : "rgba(255,255,255,0.16)";
 
   return (
     <span
@@ -65,7 +69,7 @@ function Badge({ text, title }: { text: string; title?: string }) {
   );
 }
 
-function Button({
+function Btn({
   children,
   onClick,
   disabled,
@@ -80,13 +84,13 @@ function Button({
 }) {
   const base: React.CSSProperties = {
     padding: "10px 12px",
-    borderRadius: 10,
-    border: "1px solid #333",
-    background: "#151515",
+    borderRadius: 12,
+    border: "1px solid rgba(255,255,255,0.14)",
+    background: "rgba(255,255,255,0.06)",
     color: "white",
     cursor: disabled ? "not-allowed" : "pointer",
-    opacity: disabled ? 0.6 : 1,
-    fontWeight: 700,
+    opacity: disabled ? 0.55 : 1,
+    fontWeight: 800,
     fontSize: 13,
     transition: "transform 120ms ease, background 120ms ease, border 120ms ease",
     userSelect: "none",
@@ -94,28 +98,57 @@ function Button({
 
   const styles =
     variant === "primary"
-      ? { background: "#1b1b1b", borderColor: "#3a3a3a" }
+      ? { background: "rgba(255,255,255,0.08)", borderColor: "rgba(255,255,255,0.22)" }
       : variant === "danger"
-      ? { background: "#2a1515", borderColor: "#7a2e2e" }
-      : { background: "#111", borderColor: "#2a2a2a" };
+      ? { background: "rgba(122,46,46,0.22)", borderColor: "rgba(122,46,46,0.75)" }
+      : { background: "rgba(255,255,255,0.04)", borderColor: "rgba(255,255,255,0.14)" };
 
   return (
     <button
       title={title}
       onClick={disabled ? undefined : onClick}
       style={{ ...base, ...styles }}
-      onMouseDown={(e) => {
-        (e.currentTarget as HTMLButtonElement).style.transform = "scale(0.98)";
-      }}
-      onMouseUp={(e) => {
-        (e.currentTarget as HTMLButtonElement).style.transform = "scale(1)";
-      }}
-      onMouseLeave={(e) => {
-        (e.currentTarget as HTMLButtonElement).style.transform = "scale(1)";
-      }}
+      onMouseDown={(e) => (((e.currentTarget as HTMLButtonElement).style.transform = "scale(0.98)"))}
+      onMouseUp={(e) => (((e.currentTarget as HTMLButtonElement).style.transform = "scale(1)"))}
+      onMouseLeave={(e) => (((e.currentTarget as HTMLButtonElement).style.transform = "scale(1)"))}
     >
       {children}
     </button>
+  );
+}
+
+function Field({
+  label,
+  value,
+  onChange,
+  placeholder,
+  mono,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+  mono?: boolean;
+}) {
+  return (
+    <div>
+      <div style={{ fontSize: 12, opacity: 0.7, marginBottom: 6 }}>{label}</div>
+      <input
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        style={{
+          width: "100%",
+          padding: 12,
+          borderRadius: 12,
+          border: "1px solid rgba(255,255,255,0.16)",
+          background: "rgba(0,0,0,0.35)",
+          color: "white",
+          outline: "none",
+          fontFamily: mono ? "ui-monospace, SFMono-Regular, Menlo, monospace" : "inherit",
+        }}
+      />
+    </div>
   );
 }
 
@@ -130,17 +163,33 @@ export default function DashboardClient({ rows }: { rows: Row[] }) {
 
   const [syncing, setSyncing] = useState(false);
 
-  // ---- Email state ----
+  // email actions
   const [sendingOneId, setSendingOneId] = useState<string | null>(null);
   const [bulkSending, setBulkSending] = useState(false);
 
-  // ---- Allotment modal state ----
+  // modal
   const [selected, setSelected] = useState<Row | null>(null);
+  const [tab, setTab] = useState<"allot" | "details">("allot");
+
+  // allotment
   const [ac, setAc] = useState("");
   const [ap, setAp] = useState("");
+
+  // editable fields
+  const [fullName, setFullName] = useState("");
+  const [whatsapp, setWhatsapp] = useState("");
+  const [college, setCollege] = useState("");
+  const [course, setCourse] = useState("");
+  const [catEdit, setCatEdit] = useState("");
+  const [roundEdit, setRoundEdit] = useState("");
+  const [statusEdit, setStatusEdit] = useState("");
+  const [caCode, setCaCode] = useState("");
+  const [accommodation, setAccommodation] = useState("");
+  const [munExperience, setMunExperience] = useState("");
+
   const [saving, setSaving] = useState(false);
 
-  // Better scroll: allow wheel to scroll horizontally when hovering table container
+  // scroll improvements
   const scrollerRef = useRef<HTMLDivElement | null>(null);
   useEffect(() => {
     const el = scrollerRef.current;
@@ -161,6 +210,16 @@ export default function DashboardClient({ rows }: { rows: Row[] }) {
     return () => el.removeEventListener("wheel", onWheel as any);
   }, []);
 
+  // ESC close modal
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setSelected(null);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
+  // computed filters
   const categories = useMemo(() => {
     const set = new Set<string>();
     rows.forEach((r) => r.category && set.add(r.category));
@@ -197,19 +256,30 @@ export default function DashboardClient({ rows }: { rows: Row[] }) {
     });
   }, [rows, q, category, status, round]);
 
-  function openAllot(r: Row) {
+  function openModal(r: Row, which: "allot" | "details" = "allot") {
     setSelected(r);
+    setTab(which);
+
+    // allot fields
     setAc(r.allotted_committee ?? "");
     setAp(r.allotted_portfolio ?? "");
+
+    // detail fields
+    setFullName(r.full_name ?? "");
+    setWhatsapp(r.whatsapp ?? "");
+    setCollege(r.college ?? "");
+    setCourse(r.course ?? "");
+    setCatEdit(r.category ?? "");
+    setRoundEdit(r.round ?? "");
+    setStatusEdit(r.status ?? "");
+    setCaCode(r.ca_code ?? "");
+    setAccommodation(r.accommodation ?? "");
+    setMunExperience(r.mun_experience ?? "");
   }
 
   async function saveAllotment() {
     if (!selected) return;
-
-    if (!ac.trim() || !ap.trim()) {
-      alert("Committee + Portfolio required");
-      return;
-    }
+    if (!ac.trim() || !ap.trim()) return alert("Committee + Portfolio required");
 
     setSaving(true);
     try {
@@ -237,7 +307,6 @@ export default function DashboardClient({ rows }: { rows: Row[] }) {
 
   async function clearAllotment() {
     if (!selected) return;
-
     if (!confirm("Clear allotment for this delegate?")) return;
 
     setSaving(true);
@@ -265,6 +334,42 @@ export default function DashboardClient({ rows }: { rows: Row[] }) {
     }
   }
 
+  async function saveDetails() {
+    if (!selected) return;
+
+    setSaving(true);
+    try {
+      const patch = {
+        full_name: fullName,
+        whatsapp,
+        college,
+        course,
+        category: catEdit,
+        round: roundEdit,
+        status: statusEdit,
+        ca_code: caCode,
+        accommodation,
+        mun_experience: munExperience,
+      };
+
+      const res = await fetch("/api/delegates/update", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: selected.id, patch }),
+      });
+
+      const json = await res.json();
+      if (!json.ok) throw new Error(json.error || "Update failed");
+
+      setSelected(null);
+      router.refresh();
+    } catch (e: any) {
+      alert(e?.message ?? "Update failed");
+    } finally {
+      setSaving(false);
+    }
+  }
+
   function applyFilters() {
     const params = new URLSearchParams();
     if (q.trim()) params.set("q", q.trim());
@@ -287,9 +392,7 @@ export default function DashboardClient({ rows }: { rows: Row[] }) {
     try {
       const res = await fetch("/api/sync/registrations", { method: "POST" });
       const json = await res.json();
-      alert(
-        `Sync: ${json.ok ? "OK" : "FAILED"} | imported: ${json.imported ?? "?"}`
-      );
+      alert(`Sync: ${json.ok ? "OK" : "FAILED"} | imported: ${json.imported ?? "?"}`);
       router.refresh();
     } catch (e: any) {
       alert(e?.message ?? "Sync failed");
@@ -335,31 +438,22 @@ export default function DashboardClient({ rows }: { rows: Row[] }) {
           r.email_sent_at ?? "",
           r.email_error ?? "",
         ].map((v: any) => `"${String(v).replaceAll(`"`, `""`)}"`);
-
         return vals.join(",");
       }),
     ];
 
-    const blob = new Blob([lines.join("\n")], {
-      type: "text/csv;charset=utf-8;",
-    });
+    const blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
-
     const a = document.createElement("a");
     a.href = url;
     a.download = `delegates_${new Date().toISOString().slice(0, 10)}.csv`;
     a.click();
-
     URL.revokeObjectURL(url);
   }
 
-  // -------------------------
-  // EMAIL ACTIONS
-  // -------------------------
   async function sendOneEmail(row: Row) {
     if (!row?.id) return;
 
-    // sanity check before hitting API (API also enforces)
     if (!row.email) return alert("Missing delegate email.");
     if (!row.allotted_committee || !row.allotted_portfolio) {
       return alert("Allotment missing (committee/portfolio). Allot first.");
@@ -390,14 +484,11 @@ export default function DashboardClient({ rows }: { rows: Row[] }) {
     const ids = filteredRows.map((r) => r.id).filter(Boolean);
     if (ids.length === 0) return alert("No delegates in current view.");
 
-    // warn if many are not allotted
-    const missingAllot = filteredRows.filter(
-      (r) => !r.allotted_committee || !r.allotted_portfolio
-    ).length;
+    const missingAllot = filteredRows.filter((r) => !r.allotted_committee || !r.allotted_portfolio).length;
 
     const msg =
       missingAllot > 0
-        ? `Send emails to ${ids.length} delegates?\n\nNote: ${missingAllot} delegates in this view have missing allotment and will fail (logged as failed). Continue?`
+        ? `Send emails to ${ids.length} delegates?\n\nNote: ${missingAllot} delegates in this view have missing allotment and will fail.\nContinue?`
         : `Send emails to ${ids.length} delegates?`;
 
     if (!confirm(msg)) return;
@@ -424,50 +515,37 @@ export default function DashboardClient({ rows }: { rows: Row[] }) {
   }
 
   return (
-    <div style={{ padding: 18, color: "white" }}>
-      {/* Header */}
-      <div
-        style={{
-          display: "flex",
-          gap: 12,
-          alignItems: "center",
-          justifyContent: "space-between",
-          marginBottom: 14,
-        }}
-      >
+    <div
+      style={{
+        padding: 18,
+        color: "white",
+        borderRadius: 18,
+        background:
+          "radial-gradient(1000px 500px at 30% -20%, rgba(96,165,250,0.18), transparent 55%), radial-gradient(900px 600px at 110% 0%, rgba(168,85,247,0.14), transparent 55%), rgba(255,255,255,0.02)",
+        border: "1px solid rgba(255,255,255,0.10)",
+      }}
+    >
+      {/* header */}
+      <div style={{ display: "flex", gap: 12, alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
         <div>
-          <div style={{ fontSize: 22, fontWeight: 900, letterSpacing: 0.2 }}>
-            Delegates Dashboard
-          </div>
-          <div style={{ opacity: 0.7, fontSize: 13, marginTop: 4 }}>
+          <div style={{ fontSize: 24, fontWeight: 950, letterSpacing: 0.2 }}>Delegates Dashboard</div>
+          <div style={{ opacity: 0.75, fontSize: 13, marginTop: 4 }}>
             Showing <b>{filteredRows.length}</b> of <b>{rows.length}</b>
           </div>
         </div>
 
-        <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-          <Button onClick={exportCsv} variant="ghost" title="Export current filtered view">
-            Export CSV
-          </Button>
-
-          <Button
-            onClick={bulkSendView}
-            disabled={bulkSending}
-            title="Send allotment emails to all delegates in the current filtered view"
-          >
+        <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+          <Btn onClick={exportCsv} variant="ghost">Export CSV</Btn>
+          <Btn onClick={bulkSendView} disabled={bulkSending} title="Send emails to current view">
             {bulkSending ? "Bulk Sending…" : "Bulk Email (View)"}
-          </Button>
-
-          <Button
-            onClick={syncNow}
-            disabled={syncing}
-            title="Pull latest Google Form responses into Supabase"
-          >
+          </Btn>
+          <Btn onClick={syncNow} disabled={syncing} title="Sync from Google Sheets">
             {syncing ? "Syncing…" : "Sync from Sheets"}
-          </Button>
+          </Btn>
         </div>
       </div>
 
-      {/* Filters */}
+      {/* filters */}
       <div
         style={{
           display: "flex",
@@ -476,9 +554,9 @@ export default function DashboardClient({ rows }: { rows: Row[] }) {
           alignItems: "center",
           marginBottom: 14,
           padding: 12,
-          border: "1px solid #2a2a2a",
-          borderRadius: 14,
-          background: "rgba(255,255,255,0.03)",
+          border: "1px solid rgba(255,255,255,0.10)",
+          borderRadius: 16,
+          background: "rgba(0,0,0,0.25)",
         }}
       >
         <input
@@ -487,106 +565,42 @@ export default function DashboardClient({ rows }: { rows: Row[] }) {
           placeholder="Search name / email / college / CA code…"
           style={{
             padding: 12,
-            width: 340,
-            borderRadius: 12,
-            border: "1px solid #333",
-            background: "#0f0f0f",
+            width: 360,
+            borderRadius: 14,
+            border: "1px solid rgba(255,255,255,0.14)",
+            background: "rgba(0,0,0,0.35)",
             color: "white",
             outline: "none",
           }}
         />
 
-        <select
-          value={category}
-          onChange={(e) => setCategory(e.target.value)}
-          style={{
-            padding: 12,
-            borderRadius: 12,
-            border: "1px solid #333",
-            background: "#0f0f0f",
-            color: "white",
-            outline: "none",
-          }}
-        >
+        <select value={category} onChange={(e) => setCategory(e.target.value)} style={selStyle()}>
           <option value="">All categories</option>
-          {categories.map((c) => (
-            <option key={c} value={c}>
-              {c}
-            </option>
-          ))}
+          {categories.map((c) => <option key={c} value={c}>{c}</option>)}
         </select>
 
-        <select
-          value={status}
-          onChange={(e) => setStatus(e.target.value)}
-          style={{
-            padding: 12,
-            borderRadius: 12,
-            border: "1px solid #333",
-            background: "#0f0f0f",
-            color: "white",
-            outline: "none",
-          }}
-        >
+        <select value={status} onChange={(e) => setStatus(e.target.value)} style={selStyle()}>
           <option value="">All status</option>
-          {statuses.map((s) => (
-            <option key={s} value={s}>
-              {s}
-            </option>
-          ))}
+          {statuses.map((s) => <option key={s} value={s}>{s}</option>)}
         </select>
 
-        <select
-          value={round}
-          onChange={(e) => setRound(e.target.value)}
-          style={{
-            padding: 12,
-            borderRadius: 12,
-            border: "1px solid #333",
-            background: "#0f0f0f",
-            color: "white",
-            outline: "none",
-          }}
-        >
+        <select value={round} onChange={(e) => setRound(e.target.value)} style={selStyle()}>
           <option value="">All rounds</option>
-          {rounds.map((r) => (
-            <option key={r} value={r}>
-              {r}
-            </option>
-          ))}
+          {rounds.map((r) => <option key={r} value={r}>{r}</option>)}
         </select>
 
         <div style={{ display: "flex", gap: 10 }}>
-          <Button onClick={applyFilters} variant="primary">
-            Apply
-          </Button>
-          <Button onClick={clearFilters} variant="ghost">
-            Clear
-          </Button>
+          <Btn onClick={applyFilters} variant="primary">Apply</Btn>
+          <Btn onClick={clearFilters} variant="ghost">Clear</Btn>
         </div>
       </div>
 
-      {/* Table */}
-      <div
-        style={{
-          border: "1px solid #2a2a2a",
-          borderRadius: 14,
-          background: "rgba(255,255,255,0.02)",
-          overflow: "hidden",
-        }}
-      >
-        <div ref={scrollerRef} style={{ maxHeight: "68vh", overflow: "auto" }}>
-          <table
-            style={{
-              width: "100%",
-              borderCollapse: "separate",
-              borderSpacing: 0,
-              fontSize: 13,
-              minWidth: 1500,
-            }}
-          >
+      {/* table */}
+      <div style={{ border: "1px solid rgba(255,255,255,0.10)", borderRadius: 16, overflow: "hidden", background: "rgba(0,0,0,0.22)" }}>
+        <div ref={scrollerRef} style={{ maxHeight: "70vh", overflow: "auto" }}>
+          <table style={{ width: "100%", borderCollapse: "separate", borderSpacing: 0, fontSize: 13, minWidth: 1600 }}>
             <thead style={{ position: "sticky", top: 0, zIndex: 5 }}>
-              <tr style={{ background: "#101010" }}>
+              <tr style={{ background: "rgba(10,10,10,0.96)" }}>
                 {[
                   "Name",
                   "Email",
@@ -602,17 +616,18 @@ export default function DashboardClient({ rows }: { rows: Row[] }) {
                   "Allotment",
                   "Preferences",
                   "Actions",
-                ].map((h) => (
+                ].map((h, i) => (
                   <th
                     key={h}
                     style={{
                       textAlign: "left",
                       padding: "12px 12px",
-                      borderBottom: "1px solid #2a2a2a",
+                      borderBottom: "1px solid rgba(255,255,255,0.10)",
                       position: "sticky",
                       top: 0,
-                      background: "#101010",
+                      background: "rgba(10,10,10,0.96)",
                       whiteSpace: "nowrap",
+                      ...(i === 0 ? { left: 0, zIndex: 6 } : {}),
                     }}
                   >
                     {h}
@@ -626,63 +641,52 @@ export default function DashboardClient({ rows }: { rows: Row[] }) {
                 const emailStatus = (r.email_status ?? "not_sent").toString();
                 const sentAt = fmtDate(r.email_sent_at);
                 const err = (r.email_error ?? "").toString();
-
-                const canSend =
-                  !!r.email && !!r.allotted_committee && !!r.allotted_portfolio;
+                const canSend = !!r.email && !!r.allotted_committee && !!r.allotted_portfolio;
 
                 return (
                   <tr
                     key={r.id}
-                    style={{
-                      borderBottom: "1px solid #1f1f1f",
-                      background: "transparent",
-                    }}
-                    onMouseEnter={(e) =>
-                      ((e.currentTarget as HTMLTableRowElement).style.background =
-                        "rgba(255,255,255,0.03)")
-                    }
-                    onMouseLeave={(e) =>
-                      ((e.currentTarget as HTMLTableRowElement).style.background =
-                        "transparent")
-                    }
+                    style={{ background: "transparent" }}
+                    onMouseEnter={(e) => ((e.currentTarget as HTMLTableRowElement).style.background = "rgba(255,255,255,0.035)")}
+                    onMouseLeave={(e) => ((e.currentTarget as HTMLTableRowElement).style.background = "transparent")}
                   >
-                    <td style={{ padding: 12, minWidth: 180, fontWeight: 800 }}>
+                    {/* sticky name */}
+                    <td
+                      style={{
+                        padding: 12,
+                        minWidth: 200,
+                        fontWeight: 900,
+                        position: "sticky",
+                        left: 0,
+                        background: "inherit",
+                        borderRight: "1px solid rgba(255,255,255,0.06)",
+                        zIndex: 3,
+                      }}
+                    >
                       {r.full_name}
                     </td>
 
-                    <td style={{ padding: 12, minWidth: 240 }}>
-                      <span
-                        style={{
-                          fontFamily:
-                            "ui-monospace, SFMono-Regular, Menlo, monospace",
-                          fontSize: 12,
-                          opacity: 0.95,
-                        }}
-                      >
+                    <td style={{ padding: 12, minWidth: 250 }}>
+                      <span style={{ fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", fontSize: 12, opacity: 0.95 }}>
                         {r.email}
                       </span>
                     </td>
 
                     <td style={{ padding: 12, minWidth: 140 }}>{r.whatsapp}</td>
-
                     <td style={{ padding: 12, minWidth: 220 }}>{r.college}</td>
-
                     <td style={{ padding: 12, minWidth: 160 }}>{r.course}</td>
-
                     <td style={{ padding: 12, minWidth: 150 }}>{r.category}</td>
 
-                    {/* CA code */}
                     <td style={{ padding: 12, minWidth: 120 }}>
                       {r.ca_code ? (
                         <span
                           style={{
-                            fontFamily:
-                              "ui-monospace, SFMono-Regular, Menlo, monospace",
+                            fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
                             fontSize: 12,
-                            padding: "4px 8px",
-                            borderRadius: 10,
-                            border: "1px solid #333",
-                            background: "#0f0f0f",
+                            padding: "4px 10px",
+                            borderRadius: 999,
+                            border: "1px solid rgba(255,255,255,0.14)",
+                            background: "rgba(0,0,0,0.35)",
                             whiteSpace: "nowrap",
                           }}
                         >
@@ -694,41 +698,23 @@ export default function DashboardClient({ rows }: { rows: Row[] }) {
                     </td>
 
                     <td style={{ padding: 12, minWidth: 120 }}>{r.round}</td>
-
                     <td style={{ padding: 12, minWidth: 130 }}>
                       <Badge text={r.status ?? ""} />
                     </td>
 
-                    {/* Email status */}
                     <td style={{ padding: 12, minWidth: 140 }}>
-                      <Badge
-                        text={emailStatus}
-                        title={emailStatus === "failed" && err ? err : undefined}
-                      />
+                      <Badge text={emailStatus} title={emailStatus === "failed" && err ? err : undefined} />
                     </td>
 
-                    {/* Sent at */}
                     <td style={{ padding: 12, minWidth: 170 }}>
-                      {sentAt ? (
-                        <span style={{ opacity: 0.9 }}>{sentAt}</span>
-                      ) : (
-                        <span style={{ opacity: 0.45 }}>—</span>
-                      )}
+                      {sentAt ? <span style={{ opacity: 0.9 }}>{sentAt}</span> : <span style={{ opacity: 0.45 }}>—</span>}
                     </td>
 
-                    <td style={{ padding: 12, minWidth: 240 }}>
+                    <td style={{ padding: 12, minWidth: 260 }}>
                       {r.allotted_committee || r.allotted_portfolio ? (
-                        <div
-                          style={{
-                            display: "flex",
-                            flexDirection: "column",
-                            gap: 4,
-                          }}
-                        >
-                          <div style={{ fontWeight: 800 }}>
-                            {r.allotted_committee}
-                          </div>
-                          <div style={{ opacity: 0.8 }}>{r.allotted_portfolio}</div>
+                        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                          <div style={{ fontWeight: 900 }}>{r.allotted_committee}</div>
+                          <div style={{ opacity: 0.85 }}>{r.allotted_portfolio}</div>
                         </div>
                       ) : (
                         <span style={{ opacity: 0.55 }}>Not allotted</span>
@@ -737,45 +723,25 @@ export default function DashboardClient({ rows }: { rows: Row[] }) {
 
                     <td style={{ padding: 12, minWidth: 360 }}>
                       <details>
-                        <summary style={{ cursor: "pointer", userSelect: "none" }}>
-                          View
-                        </summary>
-                        <pre
-                          style={{
-                            whiteSpace: "pre-wrap",
-                            marginTop: 10,
-                            opacity: 0.9,
-                          }}
-                        >
+                        <summary style={{ cursor: "pointer", userSelect: "none" }}>View</summary>
+                        <pre style={{ whiteSpace: "pre-wrap", marginTop: 10, opacity: 0.9 }}>
                           {JSON.stringify(r.preferences ?? {}, null, 2)}
                         </pre>
                       </details>
                     </td>
 
-                    <td style={{ padding: 12, minWidth: 260 }}>
+                    <td style={{ padding: 12, minWidth: 320 }}>
                       <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                        <Button
-                          onClick={() => openAllot(r)}
-                          variant="primary"
-                          title="Open allotment modal"
-                        >
-                          Allot / Edit
-                        </Button>
-
-                        <Button
+                        <Btn onClick={() => openModal(r, "allot")} variant="primary">Allot</Btn>
+                        <Btn onClick={() => openModal(r, "details")} variant="ghost">Edit</Btn>
+                        <Btn
                           onClick={() => sendOneEmail(r)}
-                          disabled={
-                            sendingOneId === r.id || !canSend
-                          }
+                          disabled={sendingOneId === r.id || !canSend}
                           variant="ghost"
-                          title={
-                            !canSend
-                              ? "Requires email + committee + portfolio"
-                              : "Send allotment email"
-                          }
+                          title={!canSend ? "Requires email + committee + portfolio" : "Send allotment email"}
                         >
                           {sendingOneId === r.id ? "Sending…" : "Send Email"}
-                        </Button>
+                        </Btn>
                       </div>
                     </td>
                   </tr>
@@ -793,25 +759,18 @@ export default function DashboardClient({ rows }: { rows: Row[] }) {
           </table>
         </div>
 
-        <div
-          style={{
-            padding: 10,
-            borderTop: "1px solid #2a2a2a",
-            opacity: 0.7,
-            fontSize: 12,
-          }}
-        >
-          Tip: Scroll on the table to move left/right. Header stays sticky.
+        <div style={{ padding: 10, borderTop: "1px solid rgba(255,255,255,0.10)", opacity: 0.75, fontSize: 12 }}>
+          Tip: Scroll on the table to move left/right. Hold <b>Shift</b> to use native horizontal scroll.
         </div>
       </div>
 
-      {/* Modal */}
+      {/* modal */}
       {selected && (
         <div
           style={{
             position: "fixed",
             inset: 0,
-            background: "rgba(0,0,0,0.72)",
+            background: "rgba(0,0,0,0.75)",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
@@ -824,154 +783,135 @@ export default function DashboardClient({ rows }: { rows: Row[] }) {
         >
           <div
             style={{
-              width: "min(720px, 100%)",
-              borderRadius: 16,
-              border: "1px solid #2a2a2a",
-              background: "#0e0e0e",
+              width: "min(820px, 100%)",
+              borderRadius: 18,
+              border: "1px solid rgba(255,255,255,0.12)",
+              background:
+                "radial-gradient(900px 500px at 20% 0%, rgba(96,165,250,0.18), transparent 50%), radial-gradient(900px 500px at 120% 0%, rgba(168,85,247,0.16), transparent 55%), rgba(10,10,10,0.94)",
               padding: 16,
-              boxShadow: "0 20px 80px rgba(0,0,0,0.6)",
+              boxShadow: "0 20px 90px rgba(0,0,0,0.70)",
             }}
           >
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                gap: 12,
-                alignItems: "flex-start",
-              }}
-            >
+            {/* top */}
+            <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "flex-start" }}>
               <div>
-                <div style={{ fontSize: 18, fontWeight: 900 }}>
-                  {selected.full_name}
-                </div>
-                <div style={{ opacity: 0.8, marginTop: 4 }}>
-                  <span
-                    style={{
-                      fontFamily:
-                        "ui-monospace, SFMono-Regular, Menlo, monospace",
-                      fontSize: 12,
-                    }}
-                  >
+                <div style={{ fontSize: 18, fontWeight: 950 }}>{selected.full_name}</div>
+                <div style={{ opacity: 0.82, marginTop: 4 }}>
+                  <span style={{ fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", fontSize: 12 }}>
                     {selected.email}
                   </span>
                 </div>
-                {selected.ca_code ? (
-                  <div style={{ marginTop: 8 }}>
-                    <span style={{ opacity: 0.7, marginRight: 6 }}>CA:</span>
-                    <span
-                      style={{
-                        fontFamily:
-                          "ui-monospace, SFMono-Regular, Menlo, monospace",
-                      }}
-                    >
-                      {selected.ca_code}
-                    </span>
-                  </div>
-                ) : null}
-              </div>
-
-              <Button onClick={() => setSelected(null)} variant="ghost">
-                Close
-              </Button>
-            </div>
-
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "1fr 1fr",
-                gap: 12,
-                marginTop: 14,
-              }}
-            >
-              <div>
-                <div style={{ fontSize: 12, opacity: 0.7, marginBottom: 6 }}>
-                  Allotted Committee
+                <div style={{ marginTop: 8, display: "flex", gap: 8, flexWrap: "wrap" }}>
+                  {selected.ca_code ? <Badge text={`CA: ${selected.ca_code}`} /> : <Badge text="CA: —" />}
+                  {selected.round ? <Badge text={`Round: ${selected.round}`} /> : null}
+                  {selected.status ? <Badge text={selected.status} /> : null}
                 </div>
-                <input
-                  value={ac}
-                  onChange={(e) => setAc(e.target.value)}
-                  placeholder="e.g., UNHRC"
-                  style={{
-                    width: "100%",
-                    padding: 12,
-                    borderRadius: 12,
-                    border: "1px solid #333",
-                    background: "#0b0b0b",
-                    color: "white",
-                    outline: "none",
-                  }}
-                />
               </div>
 
-              <div>
-                <div style={{ fontSize: 12, opacity: 0.7, marginBottom: 6 }}>
-                  Allotted Portfolio
+              <Btn onClick={() => setSelected(null)} variant="ghost">Close (Esc)</Btn>
+            </div>
+
+            {/* tabs */}
+            <div style={{ display: "flex", gap: 10, marginTop: 14 }}>
+              <button
+                onClick={() => setTab("allot")}
+                style={tabBtnStyle(tab === "allot")}
+              >
+                Allotment
+              </button>
+              <button
+                onClick={() => setTab("details")}
+                style={tabBtnStyle(tab === "details")}
+              >
+                Edit Details
+              </button>
+            </div>
+
+            {/* content */}
+            {tab === "allot" ? (
+              <>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginTop: 14 }}>
+                  <Field label="Allotted Committee" value={ac} onChange={setAc} placeholder="e.g., UNHRC" />
+                  <Field label="Allotted Portfolio" value={ap} onChange={setAp} placeholder="e.g., France" />
                 </div>
-                <input
-                  value={ap}
-                  onChange={(e) => setAp(e.target.value)}
-                  placeholder="e.g., France"
-                  style={{
-                    width: "100%",
-                    padding: 12,
-                    borderRadius: 12,
-                    border: "1px solid #333",
-                    background: "#0b0b0b",
-                    color: "white",
-                    outline: "none",
-                  }}
-                />
-              </div>
-            </div>
 
-            <div
-              style={{
-                marginTop: 12,
-                padding: 12,
-                border: "1px solid #222",
-                borderRadius: 14,
-                background: "rgba(255,255,255,0.02)",
-              }}
-            >
-              <div style={{ fontSize: 12, opacity: 0.7, marginBottom: 8 }}>
-                Preferences
-              </div>
-              <pre
-                style={{
-                  whiteSpace: "pre-wrap",
-                  margin: 0,
-                  fontSize: 12,
-                  opacity: 0.9,
-                }}
-              >
-                {JSON.stringify(selected.preferences ?? {}, null, 2)}
-              </pre>
-            </div>
+                <div style={panelStyle()}>
+                  <div style={{ fontSize: 12, opacity: 0.7, marginBottom: 8 }}>Preferences</div>
+                  <pre style={{ whiteSpace: "pre-wrap", margin: 0, fontSize: 12, opacity: 0.9 }}>
+                    {JSON.stringify(selected.preferences ?? {}, null, 2)}
+                  </pre>
+                </div>
 
-            <div
-              style={{
-                display: "flex",
-                gap: 10,
-                justifyContent: "flex-end",
-                marginTop: 14,
-              }}
-            >
-              <Button
-                onClick={clearAllotment}
-                disabled={saving}
-                variant="danger"
-                title="Clear committee + portfolio"
-              >
-                {saving ? "Working…" : "Clear Allotment"}
-              </Button>
+                <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 14 }}>
+                  <Btn onClick={clearAllotment} disabled={saving} variant="danger">
+                    {saving ? "Working…" : "Clear Allotment"}
+                  </Btn>
+                  <Btn onClick={saveAllotment} disabled={saving} variant="primary">
+                    {saving ? "Saving…" : "Save Allotment"}
+                  </Btn>
+                </div>
+              </>
+            ) : (
+              <>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginTop: 14 }}>
+                  <Field label="Full Name" value={fullName} onChange={setFullName} placeholder="Full name" />
+                  <Field label="WhatsApp" value={whatsapp} onChange={setWhatsapp} placeholder="+91..." mono />
+                  <Field label="College" value={college} onChange={setCollege} placeholder="College" />
+                  <Field label="Course" value={course} onChange={setCourse} placeholder="Course" />
+                  <Field label="Category" value={catEdit} onChange={setCatEdit} placeholder="Category" />
+                  <Field label="Round" value={roundEdit} onChange={setRoundEdit} placeholder="Priority/Regular..." />
+                  <Field label="Status" value={statusEdit} onChange={setStatusEdit} placeholder="Registered/Allotted..." />
+                  <Field label="CA Code" value={caCode} onChange={setCaCode} placeholder="Campus ambassador code" mono />
+                </div>
 
-              <Button onClick={saveAllotment} disabled={saving} variant="primary">
-                {saving ? "Saving…" : "Save Allotment"}
-              </Button>
-            </div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginTop: 12 }}>
+                  <Field label="Accommodation" value={accommodation} onChange={setAccommodation} placeholder="Yes/No/Notes" />
+                  <Field label="MUN Experience" value={munExperience} onChange={setMunExperience} placeholder="Experience" />
+                </div>
+
+                <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 14 }}>
+                  <Btn onClick={saveDetails} disabled={saving} variant="primary">
+                    {saving ? "Saving…" : "Save Details"}
+                  </Btn>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}
     </div>
   );
+}
+
+function selStyle(): React.CSSProperties {
+  return {
+    padding: 12,
+    borderRadius: 14,
+    border: "1px solid rgba(255,255,255,0.14)",
+    background: "rgba(0,0,0,0.35)",
+    color: "white",
+    outline: "none",
+  };
+}
+
+function panelStyle(): React.CSSProperties {
+  return {
+    marginTop: 12,
+    padding: 12,
+    border: "1px solid rgba(255,255,255,0.10)",
+    borderRadius: 16,
+    background: "rgba(0,0,0,0.25)",
+  };
+}
+
+function tabBtnStyle(active: boolean): React.CSSProperties {
+  return {
+    padding: "10px 12px",
+    borderRadius: 999,
+    border: `1px solid ${active ? "rgba(255,255,255,0.22)" : "rgba(255,255,255,0.10)"}`,
+    background: active ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.04)",
+    color: "white",
+    fontWeight: 900,
+    cursor: "pointer",
+  };
 }
