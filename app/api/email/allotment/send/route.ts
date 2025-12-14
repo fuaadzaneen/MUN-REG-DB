@@ -18,12 +18,13 @@ export async function POST(req: Request) {
 
     if (error || !d) throw new Error("Delegate not found");
     if (!d.email) throw new Error("Delegate email missing");
-    if (!d.allotted_committee || !d.allotted_portfolio)
+    if (!d.allotted_committee || !d.allotted_portfolio) {
       throw new Error("Allotment missing (committee/portfolio)");
+    }
 
     const { subject, html, text } = renderAllotmentEmail({
-      delegate_name: d.full_name ?? "Delegate",
-      delegate_email: d.email,
+      name: d.full_name ?? "Delegate",
+      email: d.email,
       round: d.round ?? "Priority",
       committee: d.allotted_committee,
       portfolio: d.allotted_portfolio,
@@ -50,7 +51,9 @@ export async function POST(req: Request) {
       })
       .eq("id", id);
 
-    if (updErr) throw new Error(`Email sent, but failed to update status: ${updErr.message}`);
+    if (updErr) {
+      throw new Error(`Email sent, but failed to update status: ${updErr.message}`);
+    }
 
     return Response.json({ ok: true });
   } catch (e: any) {

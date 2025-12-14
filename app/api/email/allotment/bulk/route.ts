@@ -29,12 +29,13 @@ export async function POST(req: Request) {
     for (const d of ordered) {
       try {
         if (!d.email) throw new Error("Missing email");
-        if (!d.allotted_committee || !d.allotted_portfolio)
+        if (!d.allotted_committee || !d.allotted_portfolio) {
           throw new Error("Allotment missing (committee/portfolio)");
+        }
 
         const { subject, html, text } = renderAllotmentEmail({
-          delegate_name: d.full_name ?? "Delegate",
-          delegate_email: d.email,
+          name: d.full_name ?? "Delegate",
+          email: d.email,
           round: d.round ?? "Priority",
           committee: d.allotted_committee,
           portfolio: d.allotted_portfolio,
