@@ -23,19 +23,38 @@ export function renderAllotmentEmail(p: AllotmentParams) {
 
   const LOGO_URL = process.env.GLCE_LOGO_URL || ""; // MUST be direct image URL
 
-  const PAYMENT_URL = process.env.PAYMENT_FORM_URL || "";
+  // Default to your provided payment form
+  const PAYMENT_URL =
+    process.env.PAYMENT_FORM_URL || "https://forms.gle/UjZ9n5DSzELCwnek6";
+
+  // Optional separate link for bank-transfer reference submission; falls back to PAYMENT_URL
+  const BANK_REFERENCE_URL =
+    process.env.BANK_REFERENCE_FORM_URL || PAYMENT_URL;
+
   const WHATSAPP_GROUP_URL = process.env.WHATSAPP_GROUP_URL || "";
 
-  const CONTACT_1_NAME = process.env.CONTACT_1_NAME || "Aksa";
-  const CONTACT_1_WA = process.env.CONTACT_1_WA || "https://wa.link/zyqq7g";
+  const CONTACT_1_NAME = process.env.CONTACT_1_NAME || "Pramith";
+  const CONTACT_1_WA = process.env.CONTACT_1_WA || "https://wa.link/iwoac1";
   const CONTACT_1_PHONE = process.env.CONTACT_1_PHONE || "+91 88484 62375";
 
-  const CONTACT_2_NAME = process.env.CONTACT_2_NAME || "Tinil";
-  const CONTACT_2_WA = process.env.CONTACT_2_WA || "https://wa.link/mwj3bg";
+  const CONTACT_2_NAME = process.env.CONTACT_2_NAME || "Anna";
+  const CONTACT_2_WA = process.env.CONTACT_2_WA || "https://wa.link/uitm7a";
   const CONTACT_2_PHONE = process.env.CONTACT_2_PHONE || "+91 89436 22795";
 
   const FOOTER_EMAIL =
-    process.env.FOOTER_EMAIL || process.env.REPLY_TO_EMAIL || "glcemun@gmail.com";
+    process.env.FOOTER_EMAIL ||
+    process.env.REPLY_TO_EMAIL ||
+    "glcemun2026@gmail.com";
+
+  // --- Payment + disclaimer content ---
+  const PAYMENT_DEADLINE = "11:00 PM on 23rd December, 2025";
+  const FEE_NORMAL = "₹1299";
+  const FEE_GLCE = "₹999";
+  const REFUND_AMOUNT = "₹100";
+  const MIN_DELEGATES = "12";
+
+  const BANK_ACCOUNT_NO = "24770100006816";
+  const BANK_IFSC = "FDRL0002477";
 
   const subject = `${EVENT_NAME} ${EVENT_YEAR} – ${p.round} Allotment: ${p.committee} (${p.portfolio})`;
 
@@ -51,12 +70,27 @@ export function renderAllotmentEmail(p: AllotmentParams) {
     `Your registration for ${EVENT_NAME} ${EVENT_YEAR} is confirmed.`,
     `Dates: ${EVENT_DATES}`,
     ``,
-    `${round} Round Allotment:`,
+    `${p.round} Round Allotment:`,
     `Committee: ${p.committee}`,
     `Portfolio: ${p.portfolio}`,
     ``,
-    PAYMENT_URL ? `Payment Form: ${PAYMENT_URL}` : "",
-    WHATSAPP_GROUP_URL ? `WhatsApp Group: ${WHATSAPP_GROUP_URL}` : "",
+    `Payment & Delegation Policy:`,
+    `All delegates (individual or institutional) must pay a registration fee of ${FEE_NORMAL}. Delegates from GLCE must pay ${FEE_GLCE}.`,
+    `Institutional delegations will be duly recognized by the Secretariat, and a refund of ${REFUND_AMOUNT} will be issued upon fulfillment of the delegation criteria.`,
+    `Delegation Criteria: Minimum of ${MIN_DELEGATES} delegates from an institution.`,
+    `All delegates must complete payment on or before ${PAYMENT_DEADLINE}. Failure to pay within the stipulated time will result in cancellation of the allotted portfolio, which will be opened for allotment in the next round of registrations.`,
+    `(If your institution does not meet the delegation criteria, you will be considered an individual delegate.)`,
+    ``,
+    `Payment Form: ${PAYMENT_URL}`,
+    `Bank Transfer Done? Submit Reference: ${BANK_REFERENCE_URL}`,
+    ``,
+    `Bank Transfer Details:`,
+    `Account No: ${BANK_ACCOUNT_NO}`,
+    `IFSC: ${BANK_IFSC}`,
+    ``,
+    WHATSAPP_GROUP_URL
+      ? `WhatsApp Group: ${WHATSAPP_GROUP_URL}`
+      : "WhatsApp Group: https://chat.whatsapp.com/CJmuBfKYOngA74KHrjFCtc",
     ``,
     `For queries, contact:`,
     `${CONTACT_1_NAME}: ${CONTACT_1_PHONE}`,
@@ -67,10 +101,29 @@ export function renderAllotmentEmail(p: AllotmentParams) {
     .filter(Boolean)
     .join("\n");
 
-  // Palette (designer-faithful): deep wine + gold
-  const OUTER_BG = "#2b0019"; // dark violet-maroon (NOT pink)
-  const CARD_BG = "#1a000f"; // near-black wine
+  // Palette (deep wine + gold)
+  const OUTER_BG = "#2b0019";
+  const CARD_BG = "#1a000f";
   const GOLD = "#DAAB2D";
+  const OFFWHITE = "#f4efe4";
+
+  // Reusable mini “badge” HTML
+  const badge = (label: string) => `
+    <span style="
+      display:inline-block;
+      padding:6px 10px;
+      border-radius:999px;
+      border:1px solid rgba(218,171,45,0.35);
+      background:rgba(0,0,0,0.20);
+      color:rgba(218,171,45,0.95);
+      font-family:Arial, sans-serif;
+      font-size:11px;
+      letter-spacing:0.8px;
+      text-transform:uppercase;
+      margin:0 6px 8px 0;
+      white-space:nowrap;
+    ">${esc(label)}</span>
+  `;
 
   const html = `<!doctype html>
 <html>
@@ -88,6 +141,8 @@ export function renderAllotmentEmail(p: AllotmentParams) {
         .committee { font-size: 34px !important; }
         .portfolio { font-size: 26px !important; }
         .logo { width: 170px !important; }
+        .boxPad { padding: 14px !important; }
+        .btn { display:block !important; width:100% !important; box-sizing:border-box !important; }
       }
     </style>
   </head>
@@ -137,14 +192,12 @@ export function renderAllotmentEmail(p: AllotmentParams) {
                       : ""
                   }
 
-                  <div style="height:6px;"></div>
-
                   <div style="
                     color:${GOLD};
-                    font-family: 'Playfair Display', Georgia, 'Times New Roman', serif;
+                    font-family:'Playfair Display', Georgia, 'Times New Roman', serif;
                     font-size:18px;
                     letter-spacing:0.6px;
-                    margin-top:2px;
+                    margin-top:4px;
                   ">
                     ${esc(EVENT_NAME)} • ${esc(EVENT_YEAR)}
                   </div>
@@ -159,7 +212,14 @@ export function renderAllotmentEmail(p: AllotmentParams) {
                     ${esc(TAGLINE)}
                   </div>
 
-                  <div style="height:16px;"></div>
+                  <div style="height:14px;"></div>
+
+                  <div style="text-align:center;">
+                    ${badge(`DATES • ${EVENT_DATES}`)}
+                    ${badge(`${p.round} ROUND`)}
+                  </div>
+
+                  <div style="height:10px;"></div>
 
                   <div style="
                     width:100%;
@@ -177,7 +237,7 @@ export function renderAllotmentEmail(p: AllotmentParams) {
                     font-family:'Playfair Display', Georgia, 'Times New Roman', serif;
                     font-size:24px;
                     font-weight:700;
-                    color:#f4efe4;
+                    color:${OFFWHITE};
                     margin:0 0 10px 0;
                   ">
                     Greetings ${name},
@@ -193,8 +253,6 @@ export function renderAllotmentEmail(p: AllotmentParams) {
                   ">
                     We are pleased to confirm your registration for
                     <b style="color:${GOLD};">${esc(EVENT_NAME)}</b>.
-                    <br/>
-                    <span style="opacity:0.92;">Dates: ${esc(EVENT_DATES)}</span>
                   </div>
 
                   <!-- Allotment card -->
@@ -217,9 +275,9 @@ export function renderAllotmentEmail(p: AllotmentParams) {
                             <td style="padding:20px 18px 24px 18px;text-align:center;">
                               <div style="
                                 color:rgba(218,171,45,0.95);
-                                font-family:Georgia,'Times New Roman',serif;
-                                font-size:12px;
-                                letter-spacing:1.6px;
+                                font-family:Arial, sans-serif;
+                                font-size:11px;
+                                letter-spacing:1.8px;
                                 text-transform:uppercase;
                                 margin-bottom:10px;
                               ">
@@ -267,35 +325,185 @@ export function renderAllotmentEmail(p: AllotmentParams) {
 
                   <div style="height:18px;"></div>
 
-                  ${
-                    PAYMENT_URL
-                      ? `
-                    <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0 auto;">
-                      <tr>
-                        <td align="center">
-                          <a href="${esc(PAYMENT_URL)}"
-                            style="
-                              display:inline-block;
-                              background:${GOLD};
-                              color:#1a000f;
-                              text-decoration:none;
-                              font-family:Arial, sans-serif;
-                              font-weight:700;
-                              font-size:13px;
-                              letter-spacing:0.6px;
-                              padding:12px 18px;
-                              border-radius:12px;
-                              box-shadow: 0 14px 30px rgba(0,0,0,0.35);
-                            ">
-                            PAYMENT FORM
-                          </a>
-                        </td>
-                      </tr>
-                    </table>
-                    <div style="height:10px;"></div>
-                  `
-                      : ""
-                  }
+                  <!-- Payment Policy / Disclaimer box -->
+                  <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="border-collapse:separate;border-spacing:0;">
+                    <tr>
+                      <td align="center">
+                        <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%"
+                          style="
+                            border-collapse:separate;border-spacing:0;
+                            max-width:560px;
+                            background: linear-gradient(180deg, rgba(218,171,45,0.08), rgba(0,0,0,0.40));
+                            border: 1px solid rgba(218,171,45,0.35);
+                            border-radius:16px;
+                            overflow:hidden;
+                          ">
+                          <tr>
+                            <td class="boxPad" style="padding:16px 16px 14px 16px;text-align:left;">
+                              <div style="text-align:center;">
+                                ${badge("PAYMENT POLICY")}
+                                ${badge("DELEGATION")}
+                                ${badge(`DEADLINE • ${PAYMENT_DEADLINE}`)}
+                              </div>
+
+                              <div style="height:6px;"></div>
+
+                              <div style="
+                                font-family: Georgia, 'Times New Roman', serif;
+                                color:rgba(244,239,228,0.92);
+                                font-size:13px;
+                                line-height:20px;
+                              ">
+                                <div style="margin-bottom:8px;">
+                                  All delegates, whether registering individually or as part of an institutional delegation,
+                                  are required to pay a registration fee of <b style="color:${GOLD};">${esc(FEE_NORMAL)}</b>.
+                                  Delegates from GLCE are required to pay <b style="color:${GOLD};">${esc(FEE_GLCE)}</b>.
+                                </div>
+
+                                <div style="margin-bottom:8px;">
+                                  Institutional delegations will be duly recognized by the Secretariat, and a refund of
+                                  <b style="color:${GOLD};">${esc(REFUND_AMOUNT)}</b> will be issued upon fulfillment of the delegation criteria.
+                                </div>
+
+                                <div style="margin-bottom:10px;">
+                                  <b style="color:${GOLD};">Delegation Criteria:</b>
+                                  A minimum of <b style="color:${GOLD};">${esc(MIN_DELEGATES)}</b> delegates from an institution.
+                                </div>
+
+                                <div style="
+                                  margin-bottom:12px;
+                                  padding:10px 12px;
+                                  border-radius:12px;
+                                  border:1px dashed rgba(218,171,45,0.55);
+                                  background: rgba(0,0,0,0.25);
+                                ">
+                                  Please complete payment on or before
+                                  <b style="color:${GOLD};">${esc(PAYMENT_DEADLINE)}</b>.
+                                  Failure to pay within the stipulated time will result in cancellation of the allotted portfolio,
+                                  and it will be opened for allotment in the next round.
+                                  <div style="margin-top:8px; opacity:0.92;">
+                                    (If your institution does not meet the delegation criteria, you will be considered an individual delegate.)
+                                  </div>
+                                </div>
+
+                                <!-- Bank details (cute “copy-style” monospace block) -->
+                                <div style="
+                                  border-radius:14px;
+                                  border:1px solid rgba(218,171,45,0.30);
+                                  background: rgba(0,0,0,0.22);
+                                  padding:12px 12px 10px 12px;
+                                ">
+                                  <div style="text-align:center; margin-bottom:8px;">
+                                    ${badge("BANK TRANSFER")}
+                                    ${badge("COPY DETAILS")}
+                                  </div>
+
+                                  <div style="
+                                    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
+                                    font-size:12px;
+                                    line-height:18px;
+                                    color:rgba(244,239,228,0.92);
+                                    background: rgba(0,0,0,0.28);
+                                    border:1px solid rgba(218,171,45,0.22);
+                                    border-radius:12px;
+                                    padding:10px 10px;
+                                    letter-spacing:0.2px;
+                                  ">
+                                    <div style="opacity:0.85;">Bank Account No.</div>
+                                    <div style="color:${GOLD}; font-weight:700; font-size:13px;">${esc(BANK_ACCOUNT_NO)}</div>
+                                    <div style="height:8px;"></div>
+                                    <div style="opacity:0.85;">IFSC Code</div>
+                                    <div style="color:${GOLD}; font-weight:700; font-size:13px;">${esc(BANK_IFSC)}</div>
+                                  </div>
+
+                                  <div style="
+                                    margin-top:8px;
+                                    font-family:Arial, sans-serif;
+                                    font-size:11px;
+                                    color:rgba(244,239,228,0.70);
+                                    text-align:center;
+                                  ">
+                                    Tip: After transferring, submit the reference details using the button below.
+                                  </div>
+                                </div>
+                              </div>
+
+                              <div style="height:14px;"></div>
+
+                              <!-- Buttons row -->
+                              <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
+                                <tr>
+                                  <td align="center" style="padding:0;">
+                                    ${
+                                      PAYMENT_URL
+                                        ? `
+                                      <a href="${esc(PAYMENT_URL)}"
+                                        class="btn"
+                                        style="
+                                          display:inline-block;
+                                          background:${GOLD};
+                                          color:#1a000f;
+                                          text-decoration:none;
+                                          font-family:Arial, sans-serif;
+                                          font-weight:800;
+                                          font-size:12px;
+                                          letter-spacing:0.9px;
+                                          padding:12px 16px;
+                                          border-radius:12px;
+                                          box-shadow: 0 14px 30px rgba(0,0,0,0.35);
+                                          margin:0 6px 10px 0;
+                                        ">
+                                        PAY NOW / PAYMENT FORM
+                                      </a>
+                                      `
+                                        : ""
+                                    }
+
+                                    ${
+                                      BANK_REFERENCE_URL
+                                        ? `
+                                      <a href="${esc(BANK_REFERENCE_URL)}"
+                                        class="btn"
+                                        style="
+                                          display:inline-block;
+                                          background: rgba(0,0,0,0.18);
+                                          color:${GOLD};
+                                          text-decoration:none;
+                                          font-family:Arial, sans-serif;
+                                          font-weight:800;
+                                          font-size:12px;
+                                          letter-spacing:0.8px;
+                                          padding:12px 16px;
+                                          border-radius:12px;
+                                          border: 1px solid rgba(218,171,45,0.60);
+                                          box-shadow: 0 14px 30px rgba(0,0,0,0.22);
+                                          margin:0 0 10px 0;
+                                        ">
+                                        BANK TRANSFER DONE? SUBMIT REFERENCE
+                                      </a>
+                                      `
+                                        : ""
+                                    }
+                                  </td>
+                                </tr>
+                              </table>
+
+                              <div style="
+                                font-family:Arial, sans-serif;
+                                font-size:11px;
+                                color:rgba(244,239,228,0.65);
+                                text-align:center;
+                              ">
+                                If you paid via bank transfer, please still submit the form with reference details.
+                              </div>
+                            </td>
+                          </tr>
+                        </table>
+                      </td>
+                    </tr>
+                  </table>
+
+                  <div style="height:12px;"></div>
 
                   ${
                     WHATSAPP_GROUP_URL
