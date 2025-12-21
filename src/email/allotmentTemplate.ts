@@ -30,11 +30,11 @@ export function renderAllotmentEmail(p: AllotmentParams) {
 
   const CONTACT_1_NAME = "Pramith";
   const CONTACT_1_WA = "https://wa.link/iwoac1";
-  const CONTACT_1_PHONE = "+91 88484 62375";
+  const CONTACT_1_PHONE = "+91 85473 00815";
 
   const CONTACT_2_NAME = "Anna";
   const CONTACT_2_WA = "https://wa.link/uitm7a";
-  const CONTACT_2_PHONE = "+91 89436 22795";
+  const CONTACT_2_PHONE = "+91 80866 35149";
 
   const FOOTER_EMAIL =
     process.env.FOOTER_EMAIL ||
