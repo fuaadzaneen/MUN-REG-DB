@@ -16,37 +16,32 @@ function esc(s: any) {
 }
 
 export function renderAllotmentEmail(p: AllotmentParams) {
+  // Keep these env-driven (safe + useful)
   const EVENT_NAME = process.env.EVENT_NAME || "GLCE MUN";
   const EVENT_YEAR = process.env.EVENT_YEAR || "2026";
   const EVENT_DATES = process.env.EVENT_DATES || "23rd to 25th January";
   const TAGLINE = process.env.EVENT_TAGLINE || "Fiat justitia Ruat caelum";
-
   const LOGO_URL = process.env.GLCE_LOGO_URL || ""; // MUST be direct image URL
-
-  // Default to your provided payment form
-  const PAYMENT_URL =
-    process.env.PAYMENT_FORM_URL || "https://forms.gle/UjZ9n5DSzELCwnek6";
-
-  // Optional separate link for bank-transfer reference submission; falls back to PAYMENT_URL
-  const BANK_REFERENCE_URL =
-    process.env.BANK_REFERENCE_FORM_URL || PAYMENT_URL;
-
   const WHATSAPP_GROUP_URL = process.env.WHATSAPP_GROUP_URL || "";
 
-  const CONTACT_1_NAME = process.env.CONTACT_1_NAME || "Pramith";
-  const CONTACT_1_WA = process.env.CONTACT_1_WA || "https://wa.link/iwoac1";
-  const CONTACT_1_PHONE = process.env.CONTACT_1_PHONE || "+91 88484 62375";
+  // HARD-FIXED: no env overrides (your request)
+  const PAYMENT_URL = "https://forms.gle/UjZ9n5DSzELCwnek6";
+  const BANK_REFERENCE_URL = PAYMENT_URL;
 
-  const CONTACT_2_NAME = process.env.CONTACT_2_NAME || "Anna";
-  const CONTACT_2_WA = process.env.CONTACT_2_WA || "https://wa.link/uitm7a";
-  const CONTACT_2_PHONE = process.env.CONTACT_2_PHONE || "+91 89436 22795";
+  const CONTACT_1_NAME = "Pramith";
+  const CONTACT_1_WA = "https://wa.link/iwoac1";
+  const CONTACT_1_PHONE = "+91 88484 62375";
+
+  const CONTACT_2_NAME = "Anna";
+  const CONTACT_2_WA = "https://wa.link/uitm7a";
+  const CONTACT_2_PHONE = "+91 89436 22795";
 
   const FOOTER_EMAIL =
     process.env.FOOTER_EMAIL ||
     process.env.REPLY_TO_EMAIL ||
     "glcemun2026@gmail.com";
 
-  // --- Payment + disclaimer content ---
+  // Payment + disclaimer content
   const PAYMENT_DEADLINE = "11:00 PM on 23rd December, 2025";
   const FEE_NORMAL = "₹1299";
   const FEE_GLCE = "₹999";
@@ -101,13 +96,13 @@ export function renderAllotmentEmail(p: AllotmentParams) {
     .filter(Boolean)
     .join("\n");
 
-  // Palette (deep wine + gold)
+  // Palette
   const OUTER_BG = "#2b0019";
   const CARD_BG = "#1a000f";
   const GOLD = "#DAAB2D";
   const OFFWHITE = "#f4efe4";
 
-  // Reusable mini “badge” HTML
+  // Reusable mini badge
   const badge = (label: string) => `
     <span style="
       display:inline-block;
@@ -333,20 +328,24 @@ export function renderAllotmentEmail(p: AllotmentParams) {
                           style="
                             border-collapse:separate;border-spacing:0;
                             max-width:560px;
-                            background: linear-gradient(180deg, rgba(218,171,45,0.08), rgba(0,0,0,0.40));
+                            background: linear-gradient(180deg, rgba(218,171,45,0.09), rgba(0,0,0,0.42));
                             border: 1px solid rgba(218,171,45,0.35);
                             border-radius:16px;
                             overflow:hidden;
                           ">
                           <tr>
                             <td class="boxPad" style="padding:16px 16px 14px 16px;text-align:left;">
-                              <div style="text-align:center;">
+                              <div style="
+                                text-align:center;
+                                margin-bottom:6px;
+                                padding:10px 10px 2px 10px;
+                                border-radius:14px;
+                                background: radial-gradient(520px 140px at 50% 0%, rgba(218,171,45,0.12), rgba(0,0,0,0) 70%);
+                              ">
                                 ${badge("PAYMENT POLICY")}
                                 ${badge("DELEGATION")}
                                 ${badge(`DEADLINE • ${PAYMENT_DEADLINE}`)}
                               </div>
-
-                              <div style="height:6px;"></div>
 
                               <div style="
                                 font-family: Georgia, 'Times New Roman', serif;
@@ -386,7 +385,7 @@ export function renderAllotmentEmail(p: AllotmentParams) {
                                   </div>
                                 </div>
 
-                                <!-- Bank details (cute “copy-style” monospace block) -->
+                                <!-- Bank details -->
                                 <div style="
                                   border-radius:14px;
                                   border:1px solid rgba(218,171,45,0.30);
@@ -430,60 +429,48 @@ export function renderAllotmentEmail(p: AllotmentParams) {
 
                               <div style="height:14px;"></div>
 
-                              <!-- Buttons row -->
+                              <!-- Buttons -->
                               <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
                                 <tr>
                                   <td align="center" style="padding:0;">
-                                    ${
-                                      PAYMENT_URL
-                                        ? `
-                                      <a href="${esc(PAYMENT_URL)}"
-                                        class="btn"
-                                        style="
-                                          display:inline-block;
-                                          background:${GOLD};
-                                          color:#1a000f;
-                                          text-decoration:none;
-                                          font-family:Arial, sans-serif;
-                                          font-weight:800;
-                                          font-size:12px;
-                                          letter-spacing:0.9px;
-                                          padding:12px 16px;
-                                          border-radius:12px;
-                                          box-shadow: 0 14px 30px rgba(0,0,0,0.35);
-                                          margin:0 6px 10px 0;
-                                        ">
-                                        PAY NOW / PAYMENT FORM
-                                      </a>
-                                      `
-                                        : ""
-                                    }
+                                    <a href="${esc(PAYMENT_URL)}"
+                                      class="btn"
+                                      style="
+                                        display:inline-block;
+                                        background:${GOLD};
+                                        color:#1a000f;
+                                        text-decoration:none;
+                                        font-family:Arial, sans-serif;
+                                        font-weight:800;
+                                        font-size:12px;
+                                        letter-spacing:0.9px;
+                                        padding:12px 16px;
+                                        border-radius:12px;
+                                        box-shadow: 0 14px 30px rgba(0,0,0,0.35);
+                                        margin:0 6px 10px 0;
+                                      ">
+                                      PAY NOW • PAYMENT FORM
+                                    </a>
 
-                                    ${
-                                      BANK_REFERENCE_URL
-                                        ? `
-                                      <a href="${esc(BANK_REFERENCE_URL)}"
-                                        class="btn"
-                                        style="
-                                          display:inline-block;
-                                          background: rgba(0,0,0,0.18);
-                                          color:${GOLD};
-                                          text-decoration:none;
-                                          font-family:Arial, sans-serif;
-                                          font-weight:800;
-                                          font-size:12px;
-                                          letter-spacing:0.8px;
-                                          padding:12px 16px;
-                                          border-radius:12px;
-                                          border: 1px solid rgba(218,171,45,0.60);
-                                          box-shadow: 0 14px 30px rgba(0,0,0,0.22);
-                                          margin:0 0 10px 0;
-                                        ">
-                                        BANK TRANSFER DONE? SUBMIT REFERENCE
-                                      </a>
-                                      `
-                                        : ""
-                                    }
+                                    <a href="${esc(BANK_REFERENCE_URL)}"
+                                      class="btn"
+                                      style="
+                                        display:inline-block;
+                                        background: rgba(0,0,0,0.18);
+                                        color:${GOLD};
+                                        text-decoration:none;
+                                        font-family:Arial, sans-serif;
+                                        font-weight:800;
+                                        font-size:12px;
+                                        letter-spacing:0.8px;
+                                        padding:12px 16px;
+                                        border-radius:12px;
+                                        border: 1px solid rgba(218,171,45,0.60);
+                                        box-shadow: 0 14px 30px rgba(0,0,0,0.22);
+                                        margin:0 0 10px 0;
+                                      ">
+                                      BANK TRANSFER DONE? • SUBMIT REFERENCE
+                                    </a>
                                   </td>
                                 </tr>
                               </table>
