@@ -42,7 +42,7 @@ export function renderAllotmentEmail(p: AllotmentParams) {
     "glcemun2026@gmail.com";
 
   // Payment + disclaimer content
-  const PAYMENT_DEADLINE = "12:00 PM on 24th December, 2025";
+  const PAYMENT_DEADLINE = "11:59 PM on 24th December, 2025";
   const FEE_NORMAL = "₹1299";
   const FEE_GLCE = "₹999";
   const REFUND_AMOUNT = "₹100";
