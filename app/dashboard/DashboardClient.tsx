@@ -188,6 +188,7 @@ export default function DashboardClient({ rows }: { rows: Row[] }) {
   const [munExperience, setMunExperience] = useState("");
 
   const [saving, setSaving] = useState(false);
+  const [finalizing, setFinalizing] = useState(false);
 
   // scroll improvements
   const scrollerRef = useRef<HTMLDivElement | null>(null);
@@ -288,20 +289,57 @@ export default function DashboardClient({ rows }: { rows: Row[] }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           id: selected.id,
-          allotted_committee: ac,
-          allotted_portfolio: ap,
+          allotted_committee: ac.trim(),
+          allotted_portfolio: ap.trim(),
         }),
       });
 
       const json = await res.json();
       if (!json.ok) throw new Error(json.error || "Failed");
 
-      setSelected(null);
+      // keep modal open after Save (so you can press Finalize next if you want)
       router.refresh();
+      alert("Saved ✅ (now you can Finalize)");
     } catch (e: any) {
       alert(e?.message ?? "Save failed");
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function finalizeAllotment() {
+    if (!selected) return;
+    if (!ac.trim() || !ap.trim()) return alert("Committee + Portfolio required");
+
+    // IMPORTANT:
+    // This assumes your backend route /api/delegates/finalize will:
+    // 1) save allotted_committee + allotted_portfolio
+    // 2) set status = "Allotted" (or whatever you use)
+    // If you DON'T have this route yet, create it, or change this to /api/delegates/update.
+    setFinalizing(true);
+    try {
+      const res = await fetch("/api/delegates/finalize", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: selected.id,
+          allotted_committee: ac.trim(),
+          allotted_portfolio: ap.trim(),
+          status: "Allotted",
+        }),
+      });
+
+      const json = await res.json();
+      if (!json.ok) throw new Error(json.error || "Finalize failed");
+
+      setSelected(null);
+      router.refresh();
+      alert("Finalized ✅");
+    } catch (e: any) {
+      alert(e?.message ?? "Finalize failed");
+      router.refresh();
+    } finally {
+      setFinalizing(false);
     }
   }
 
@@ -325,8 +363,10 @@ export default function DashboardClient({ rows }: { rows: Row[] }) {
       const json = await res.json();
       if (!json.ok) throw new Error(json.error || "Failed");
 
-      setSelected(null);
       router.refresh();
+      alert("Cleared ✅");
+      setAc("");
+      setAp("");
     } catch (e: any) {
       alert(e?.message ?? "Clear failed");
     } finally {
@@ -535,7 +575,9 @@ export default function DashboardClient({ rows }: { rows: Row[] }) {
         </div>
 
         <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
-          <Btn onClick={exportCsv} variant="ghost">Export CSV</Btn>
+          <Btn onClick={exportCsv} variant="ghost">
+            Export CSV
+          </Btn>
           <Btn onClick={bulkSendView} disabled={bulkSending} title="Send emails to current view">
             {bulkSending ? "Bulk Sending…" : "Bulk Email (View)"}
           </Btn>
@@ -576,22 +618,38 @@ export default function DashboardClient({ rows }: { rows: Row[] }) {
 
         <select value={category} onChange={(e) => setCategory(e.target.value)} style={selStyle()}>
           <option value="">All categories</option>
-          {categories.map((c) => <option key={c} value={c}>{c}</option>)}
+          {categories.map((c) => (
+            <option key={c} value={c}>
+              {c}
+            </option>
+          ))}
         </select>
 
         <select value={status} onChange={(e) => setStatus(e.target.value)} style={selStyle()}>
           <option value="">All status</option>
-          {statuses.map((s) => <option key={s} value={s}>{s}</option>)}
+          {statuses.map((s) => (
+            <option key={s} value={s}>
+              {s}
+            </option>
+          ))}
         </select>
 
         <select value={round} onChange={(e) => setRound(e.target.value)} style={selStyle()}>
           <option value="">All rounds</option>
-          {rounds.map((r) => <option key={r} value={r}>{r}</option>)}
+          {rounds.map((r) => (
+            <option key={r} value={r}>
+              {r}
+            </option>
+          ))}
         </select>
 
         <div style={{ display: "flex", gap: 10 }}>
-          <Btn onClick={applyFilters} variant="primary">Apply</Btn>
-          <Btn onClick={clearFilters} variant="ghost">Clear</Btn>
+          <Btn onClick={applyFilters} variant="primary">
+            Apply
+          </Btn>
+          <Btn onClick={clearFilters} variant="ghost">
+            Clear
+          </Btn>
         </div>
       </div>
 
@@ -667,9 +725,7 @@ export default function DashboardClient({ rows }: { rows: Row[] }) {
                     </td>
 
                     <td style={{ padding: 12, minWidth: 250 }}>
-                      <span style={{ fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", fontSize: 12, opacity: 0.95 }}>
-                        {r.email}
-                      </span>
+                      <span style={{ fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", fontSize: 12, opacity: 0.95 }}>{r.email}</span>
                     </td>
 
                     <td style={{ padding: 12, minWidth: 140 }}>{r.whatsapp}</td>
@@ -724,16 +780,18 @@ export default function DashboardClient({ rows }: { rows: Row[] }) {
                     <td style={{ padding: 12, minWidth: 360 }}>
                       <details>
                         <summary style={{ cursor: "pointer", userSelect: "none" }}>View</summary>
-                        <pre style={{ whiteSpace: "pre-wrap", marginTop: 10, opacity: 0.9 }}>
-                          {JSON.stringify(r.preferences ?? {}, null, 2)}
-                        </pre>
+                        <pre style={{ whiteSpace: "pre-wrap", marginTop: 10, opacity: 0.9 }}>{JSON.stringify(r.preferences ?? {}, null, 2)}</pre>
                       </details>
                     </td>
 
                     <td style={{ padding: 12, minWidth: 320 }}>
                       <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                        <Btn onClick={() => openModal(r, "allot")} variant="primary">Allot</Btn>
-                        <Btn onClick={() => openModal(r, "details")} variant="ghost">Edit</Btn>
+                        <Btn onClick={() => openModal(r, "allot")} variant="primary">
+                          Allot
+                        </Btn>
+                        <Btn onClick={() => openModal(r, "details")} variant="ghost">
+                          Edit
+                        </Btn>
                         <Btn
                           onClick={() => sendOneEmail(r)}
                           disabled={sendingOneId === r.id || !canSend}
@@ -788,94 +846,106 @@ export default function DashboardClient({ rows }: { rows: Row[] }) {
               border: "1px solid rgba(255,255,255,0.12)",
               background:
                 "radial-gradient(900px 500px at 20% 0%, rgba(96,165,250,0.18), transparent 50%), radial-gradient(900px 500px at 120% 0%, rgba(168,85,247,0.16), transparent 55%), rgba(10,10,10,0.94)",
-              padding: 16,
               boxShadow: "0 20px 90px rgba(0,0,0,0.70)",
+              overflow: "hidden",
             }}
           >
-            {/* top */}
-            <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "flex-start" }}>
-              <div>
-                <div style={{ fontSize: 18, fontWeight: 950 }}>{selected.full_name}</div>
-                <div style={{ opacity: 0.82, marginTop: 4 }}>
-                  <span style={{ fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", fontSize: 12 }}>
-                    {selected.email}
-                  </span>
+            {/* THIS wrapper is the fix so buttons never disappear off-screen */}
+            <div style={{ padding: 16, maxHeight: "86vh", overflowY: "auto" }}>
+              {/* top */}
+              <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "flex-start" }}>
+                <div>
+                  <div style={{ fontSize: 18, fontWeight: 950 }}>{selected.full_name}</div>
+                  <div style={{ opacity: 0.82, marginTop: 4 }}>
+                    <span style={{ fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", fontSize: 12 }}>{selected.email}</span>
+                  </div>
+                  <div style={{ marginTop: 8, display: "flex", gap: 8, flexWrap: "wrap" }}>
+                    {selected.ca_code ? <Badge text={`CA: ${selected.ca_code}`} /> : <Badge text="CA: —" />}
+                    {selected.round ? <Badge text={`Round: ${selected.round}`} /> : null}
+                    {selected.status ? <Badge text={selected.status} /> : null}
+                  </div>
                 </div>
-                <div style={{ marginTop: 8, display: "flex", gap: 8, flexWrap: "wrap" }}>
-                  {selected.ca_code ? <Badge text={`CA: ${selected.ca_code}`} /> : <Badge text="CA: —" />}
-                  {selected.round ? <Badge text={`Round: ${selected.round}`} /> : null}
-                  {selected.status ? <Badge text={selected.status} /> : null}
-                </div>
+
+                <Btn onClick={() => setSelected(null)} variant="ghost">
+                  Close (Esc)
+                </Btn>
               </div>
 
-              <Btn onClick={() => setSelected(null)} variant="ghost">Close (Esc)</Btn>
+              {/* tabs */}
+              <div style={{ display: "flex", gap: 10, marginTop: 14 }}>
+                <button onClick={() => setTab("allot")} style={tabBtnStyle(tab === "allot")}>
+                  Allotment
+                </button>
+                <button onClick={() => setTab("details")} style={tabBtnStyle(tab === "details")}>
+                  Edit Details
+                </button>
+              </div>
+
+              {/* content */}
+              {tab === "allot" ? (
+                <>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginTop: 14 }}>
+                    <Field label="Allotted Committee" value={ac} onChange={setAc} placeholder="e.g., UNHRC" />
+                    <Field label="Allotted Portfolio" value={ap} onChange={setAp} placeholder="e.g., France" />
+                  </div>
+
+                  <div style={panelStyle()}>
+                    <div style={{ fontSize: 12, opacity: 0.7, marginBottom: 8 }}>Preferences</div>
+                    <pre style={{ whiteSpace: "pre-wrap", margin: 0, fontSize: 12, opacity: 0.9 }}>
+                      {JSON.stringify(selected.preferences ?? {}, null, 2)}
+                    </pre>
+                  </div>
+
+                  {/* BUTTONS YOU NEEDED (SAVE + FINALIZE) */}
+                  <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 14, flexWrap: "wrap" }}>
+                    <Btn onClick={clearAllotment} disabled={saving || finalizing} variant="danger">
+                      {saving ? "Working…" : "Clear Allotment"}
+                    </Btn>
+
+                    <Btn onClick={saveAllotment} disabled={saving || finalizing} variant="ghost" title="Just save committee+portfolio (does not change status)">
+                      {saving ? "Saving…" : "Save (Draft)"}
+                    </Btn>
+
+                    <Btn
+                      onClick={finalizeAllotment}
+                      disabled={saving || finalizing || !ac.trim() || !ap.trim()}
+                      variant="primary"
+                      title="Finalize = saves allotment + sets Status to Allotted"
+                    >
+                      {finalizing ? "Finalizing…" : "Finalize Allotment"}
+                    </Btn>
+                  </div>
+
+                  <div style={{ marginTop: 10, fontSize: 12, opacity: 0.7 }}>
+                    Finalize will set <b>Status</b> to <b>Allotted</b> (so you can filter + email safely).
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginTop: 14 }}>
+                    <Field label="Full Name" value={fullName} onChange={setFullName} placeholder="Full name" />
+                    <Field label="WhatsApp" value={whatsapp} onChange={setWhatsapp} placeholder="+91..." mono />
+                    <Field label="College" value={college} onChange={setCollege} placeholder="College" />
+                    <Field label="Course" value={course} onChange={setCourse} placeholder="Course" />
+                    <Field label="Category" value={catEdit} onChange={setCatEdit} placeholder="Category" />
+                    <Field label="Round" value={roundEdit} onChange={setRoundEdit} placeholder="Priority/Regular..." />
+                    <Field label="Status" value={statusEdit} onChange={setStatusEdit} placeholder="Registered/Allotted..." />
+                    <Field label="CA Code" value={caCode} onChange={setCaCode} placeholder="Campus ambassador code" mono />
+                  </div>
+
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginTop: 12 }}>
+                    <Field label="Accommodation" value={accommodation} onChange={setAccommodation} placeholder="Yes/No/Notes" />
+                    <Field label="MUN Experience" value={munExperience} onChange={setMunExperience} placeholder="Experience" />
+                  </div>
+
+                  <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 14 }}>
+                    <Btn onClick={saveDetails} disabled={saving} variant="primary">
+                      {saving ? "Saving…" : "Save Details"}
+                    </Btn>
+                  </div>
+                </>
+              )}
             </div>
-
-            {/* tabs */}
-            <div style={{ display: "flex", gap: 10, marginTop: 14 }}>
-              <button
-                onClick={() => setTab("allot")}
-                style={tabBtnStyle(tab === "allot")}
-              >
-                Allotment
-              </button>
-              <button
-                onClick={() => setTab("details")}
-                style={tabBtnStyle(tab === "details")}
-              >
-                Edit Details
-              </button>
-            </div>
-
-            {/* content */}
-            {tab === "allot" ? (
-              <>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginTop: 14 }}>
-                  <Field label="Allotted Committee" value={ac} onChange={setAc} placeholder="e.g., UNHRC" />
-                  <Field label="Allotted Portfolio" value={ap} onChange={setAp} placeholder="e.g., France" />
-                </div>
-
-                <div style={panelStyle()}>
-                  <div style={{ fontSize: 12, opacity: 0.7, marginBottom: 8 }}>Preferences</div>
-                  <pre style={{ whiteSpace: "pre-wrap", margin: 0, fontSize: 12, opacity: 0.9 }}>
-                    {JSON.stringify(selected.preferences ?? {}, null, 2)}
-                  </pre>
-                </div>
-
-                <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 14 }}>
-                  <Btn onClick={clearAllotment} disabled={saving} variant="danger">
-                    {saving ? "Working…" : "Clear Allotment"}
-                  </Btn>
-                  <Btn onClick={saveAllotment} disabled={saving} variant="primary">
-                    {saving ? "Saving…" : "Save Allotment"}
-                  </Btn>
-                </div>
-              </>
-            ) : (
-              <>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginTop: 14 }}>
-                  <Field label="Full Name" value={fullName} onChange={setFullName} placeholder="Full name" />
-                  <Field label="WhatsApp" value={whatsapp} onChange={setWhatsapp} placeholder="+91..." mono />
-                  <Field label="College" value={college} onChange={setCollege} placeholder="College" />
-                  <Field label="Course" value={course} onChange={setCourse} placeholder="Course" />
-                  <Field label="Category" value={catEdit} onChange={setCatEdit} placeholder="Category" />
-                  <Field label="Round" value={roundEdit} onChange={setRoundEdit} placeholder="Priority/Regular..." />
-                  <Field label="Status" value={statusEdit} onChange={setStatusEdit} placeholder="Registered/Allotted..." />
-                  <Field label="CA Code" value={caCode} onChange={setCaCode} placeholder="Campus ambassador code" mono />
-                </div>
-
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginTop: 12 }}>
-                  <Field label="Accommodation" value={accommodation} onChange={setAccommodation} placeholder="Yes/No/Notes" />
-                  <Field label="MUN Experience" value={munExperience} onChange={setMunExperience} placeholder="Experience" />
-                </div>
-
-                <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 14 }}>
-                  <Btn onClick={saveDetails} disabled={saving} variant="primary">
-                    {saving ? "Saving…" : "Save Details"}
-                  </Btn>
-                </div>
-              </>
-            )}
           </div>
         </div>
       )}
