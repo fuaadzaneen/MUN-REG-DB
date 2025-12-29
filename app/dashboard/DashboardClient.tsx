@@ -428,18 +428,26 @@ export default function DashboardClient({ rows }: { rows: Row[] }) {
   }
 
   async function syncNow() {
-    setSyncing(true);
-    try {
-      const res = await fetch("/api/sync/registrations", { method: "POST" });
-      const json = await res.json();
-      alert(`Sync: ${json.ok ? "OK" : "FAILED"} | imported: ${json.imported ?? "?"}`);
-      router.refresh();
-    } catch (e: any) {
-      alert(e?.message ?? "Sync failed");
-    } finally {
-      setSyncing(false);
-    }
+  const activeRound = round || "Priority"; // fallback safety
+
+  setSyncing(true);
+  try {
+    const res = await fetch(`/api/sync/registrations?round=${activeRound}`, {
+      method: "POST",
+    });
+
+    const json = await res.json();
+    alert(
+      `Sync ${activeRound}: ${json.ok ? "OK" : "FAILED"} | imported: ${json.imported ?? "?"}`
+    );
+    router.refresh();
+  } catch (e: any) {
+    alert(e?.message ?? "Sync failed");
+  } finally {
+    setSyncing(false);
   }
+}
+
 
   function exportCsv() {
     const headers = [
@@ -575,16 +583,38 @@ export default function DashboardClient({ rows }: { rows: Row[] }) {
         </div>
 
         <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
-          <Btn onClick={exportCsv} variant="ghost">
-            Export CSV
-          </Btn>
-          <Btn onClick={bulkSendView} disabled={bulkSending} title="Send emails to current view">
-            {bulkSending ? "Bulk Sending…" : "Bulk Email (View)"}
-          </Btn>
-          <Btn onClick={syncNow} disabled={syncing} title="Sync from Google Sheets">
-            {syncing ? "Syncing…" : "Sync from Sheets"}
-          </Btn>
-        </div>
+  <Btn onClick={exportCsv} variant="ghost">
+    Export CSV
+  </Btn>
+
+  <Btn onClick={bulkSendView} disabled={bulkSending} title="Send emails to current view">
+    {bulkSending ? "Bulk Sending…" : "Bulk Email (View)"}
+  </Btn>
+
+  <Btn onClick={syncNow} disabled={syncing} title="Sync from Google Sheets">
+    {syncing ? "Syncing…" : "Sync from Sheets"}
+  </Btn>
+
+  {/* 🔥 ROUND SHORTCUTS (NEW TABS) */}
+  <a
+    href="/dashboard?round=Priority"
+    target="_blank"
+    rel="noopener noreferrer"
+    style={{ textDecoration: "none" }}
+  >
+    <Btn variant="ghost">Priority Round</Btn>
+  </a>
+
+  <a
+    href="/dashboard?round=First"
+    target="_blank"
+    rel="noopener noreferrer"
+    style={{ textDecoration: "none" }}
+  >
+    <Btn variant="ghost">First Round</Btn>
+  </a>
+</div>
+
       </div>
 
       {/* filters */}

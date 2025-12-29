@@ -1,6 +1,7 @@
 import { supabaseAdmin } from "@/src/lib/supabase";
 import { getFrom, getTransport } from "@/src/lib/mailer";
 import { renderAllotmentEmail } from "@/src/email/allotmentTemplate";
+import { renderFirstRoundAllotmentEmail } from "@/src/email/allotmentFirstTemplate";
 
 export async function POST(req: Request) {
   let id: string | null = null;
@@ -22,13 +23,20 @@ export async function POST(req: Request) {
       throw new Error("Allotment missing (committee/portfolio)");
     }
 
-    const { subject, html, text } = renderAllotmentEmail({
-      name: d.full_name ?? "Delegate",
-      email: d.email,
-      round: d.round ?? "Priority",
-      committee: d.allotted_committee,
-      portfolio: d.allotted_portfolio,
-    });
+    const mail =
+      d.round === "First"
+        ? renderFirstRoundAllotmentEmail({
+            name: d.full_name ?? "Delegate",
+            committee: d.allotted_committee,
+            portfolio: d.allotted_portfolio,
+          })
+        : renderAllotmentEmail({
+            name: d.full_name ?? "Delegate",
+            email: d.email,
+            round: d.round ?? "Priority",
+            committee: d.allotted_committee,
+            portfolio: d.allotted_portfolio,
+          });
 
     const transport = getTransport();
     const from = getFrom();
@@ -37,12 +45,12 @@ export async function POST(req: Request) {
       from,
       to: d.email,
       replyTo: process.env.REPLY_TO_EMAIL || undefined,
-      subject,
-      html,
-      text,
+      subject: mail.subject,
+      html: mail.html,
+      text: mail.text,
     });
 
-    const { error: updErr } = await supabaseAdmin
+    await supabaseAdmin
       .from("delegates")
       .update({
         email_status: "sent",
@@ -50,10 +58,6 @@ export async function POST(req: Request) {
         email_error: null,
       })
       .eq("id", id);
-
-    if (updErr) {
-      throw new Error(`Email sent, but failed to update status: ${updErr.message}`);
-    }
 
     return Response.json({ ok: true });
   } catch (e: any) {

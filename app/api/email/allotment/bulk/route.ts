@@ -1,6 +1,7 @@
 import { supabaseAdmin } from "@/src/lib/supabase";
 import { getFrom, getTransport } from "@/src/lib/mailer";
 import { renderAllotmentEmail } from "@/src/email/allotmentTemplate";
+import { renderFirstRoundAllotmentEmail } from "@/src/email/allotmentFirstTemplate";
 
 export async function POST(req: Request) {
   const results: Array<{ id: string; ok: boolean; error?: string }> = [];
@@ -19,7 +20,6 @@ export async function POST(req: Request) {
 
     if (error || !delegates) throw new Error("Failed to fetch delegates");
 
-    // Preserve request order (optional but nice)
     const byId = new Map(delegates.map((d: any) => [String(d.id), d]));
     const ordered = uniq.map((x) => byId.get(x)).filter(Boolean) as any[];
 
@@ -30,24 +30,31 @@ export async function POST(req: Request) {
       try {
         if (!d.email) throw new Error("Missing email");
         if (!d.allotted_committee || !d.allotted_portfolio) {
-          throw new Error("Allotment missing (committee/portfolio)");
+          throw new Error("Allotment missing");
         }
 
-        const { subject, html, text } = renderAllotmentEmail({
-          name: d.full_name ?? "Delegate",
-          email: d.email,
-          round: d.round ?? "Priority",
-          committee: d.allotted_committee,
-          portfolio: d.allotted_portfolio,
-        });
+        const mail =
+          d.round === "First"
+            ? renderFirstRoundAllotmentEmail({
+                name: d.full_name ?? "Delegate",
+                committee: d.allotted_committee,
+                portfolio: d.allotted_portfolio,
+              })
+            : renderAllotmentEmail({
+                name: d.full_name ?? "Delegate",
+                email: d.email,
+                round: d.round ?? "Priority",
+                committee: d.allotted_committee,
+                portfolio: d.allotted_portfolio,
+              });
 
         await transport.sendMail({
           from,
           to: d.email,
           replyTo: process.env.REPLY_TO_EMAIL || undefined,
-          subject,
-          html,
-          text,
+          subject: mail.subject,
+          html: mail.html,
+          text: mail.text,
         });
 
         await supabaseAdmin
@@ -65,7 +72,10 @@ export async function POST(req: Request) {
 
         await supabaseAdmin
           .from("delegates")
-          .update({ email_status: "failed", email_error: msg })
+          .update({
+            email_status: "failed",
+            email_error: msg,
+          })
           .eq("id", d.id);
 
         results.push({ id: String(d.id), ok: false, error: msg });

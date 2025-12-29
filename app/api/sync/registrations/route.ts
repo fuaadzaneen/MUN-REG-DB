@@ -3,7 +3,7 @@ import { supabaseAdmin } from "@/src/lib/supabase";
 
 function getSheetsClient() {
   const raw = process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
-  if (!raw) throw new Error("Missing GOOGLE_SERVICE_ACCOUNT_JSON in .env.local");
+  if (!raw) throw new Error("Missing GOOGLE_SERVICE_ACCOUNT_JSON");
 
   const creds = JSON.parse(raw);
   const auth = new google.auth.GoogleAuth({
@@ -17,46 +17,61 @@ function getSheetsClient() {
 const COL = {
   timestamp: 0,
   full_name: 1,
-  whatsapp: 2,
-  email: 3,
-  college: 4,
-  course: 5,
-  category: 6,
-  ca_code: 7,
-  mun_experience: 8,
-  accommodation: 9,
+  college: 2,
+  course: 3,
+  whatsapp: 4,
+  email: 5,
+  ca_code: 6,
+  accommodation: 7,
 
-  c1: 10,
-  c1_p1: 11,
-  c1_p2: 12,
-  c1_p3: 13,
+  c1: 8,
+  c1_p1: 9,
+  c1_p2: 10,
+  c1_p3: 11,
 
-  c2: 14,
-  c2_p1: 15,
-  c2_p2: 16,
-  c2_p3: 17,
+  c2: 12,
+  c2_p1: 13,
+  c2_p2: 14,
+  c2_p3: 15,
 
-  c3: 18,
-  c3_p1: 19,
-  c3_p2: 20,
-  c3_p3: 21,
+  c3: 16,
+  c3_p1: 17,
+  c3_p2: 18,
+  c3_p3: 19,
+
+  mun_experience: 20,
 };
 
-const cell = (row: any[], idx: number) => (row?.[idx] ?? "").toString().trim();
+const cell = (r: any[], i: number) => (r?.[i] ?? "").toString().trim();
 
-export async function POST() {
+export async function POST(req: Request) {
   try {
-    const sheetId = process.env.SHEET_ID;
-    const sheetName = process.env.REG_SHEET_NAME;
+    const { searchParams } = new URL(req.url);
+    const round = searchParams.get("round");
 
-    if (!sheetId) throw new Error("Missing SHEET_ID in .env.local");
-    if (!sheetName) throw new Error("Missing REG_SHEET_NAME in .env.local");
+    if (!round || !["Priority", "First"].includes(round)) {
+      throw new Error("Missing or invalid round");
+    }
+
+    const SHEET_ID =
+      round === "Priority"
+        ? process.env.PRIORITY_SHEET_ID
+        : process.env.FIRST_SHEET_ID;
+
+    const SHEET_NAME =
+      round === "Priority"
+        ? process.env.PRIORITY_SHEET_NAME
+        : process.env.FIRST_SHEET_NAME;
+
+    if (!SHEET_ID || !SHEET_NAME) {
+      throw new Error("Missing sheet env vars");
+    }
 
     const sheets = getSheetsClient();
 
     const resp = await sheets.spreadsheets.values.get({
-      spreadsheetId: sheetId,
-      range: `${sheetName}!A1:Z`,
+      spreadsheetId: SHEET_ID,
+      range: `${SHEET_NAME}!A1:Z`,
     });
 
     const values = resp.data.values ?? [];
@@ -65,71 +80,75 @@ export async function POST() {
     const rows = values.slice(1);
 
     const payload = rows
-      .filter((r) => cell(r, COL.email).length > 0)
+      .filter((r) => cell(r, COL.email))
       .map((r) => {
-        const preferences = {
-          pref1: {
-            committee: cell(r, COL.c1),
-            portfolios: [cell(r, COL.c1_p1), cell(r, COL.c1_p2), cell(r, COL.c1_p3)].filter(Boolean),
-          },
-          pref2: {
-            committee: cell(r, COL.c2),
-            portfolios: [cell(r, COL.c2_p1), cell(r, COL.c2_p2), cell(r, COL.c2_p3)].filter(Boolean),
-          },
-          pref3: {
-            committee: cell(r, COL.c3),
-            portfolios: [cell(r, COL.c3_p1), cell(r, COL.c3_p2), cell(r, COL.c3_p3)].filter(Boolean),
-          },
-        };
-
-        const ts = cell(r, COL.timestamp);
-        const tsTail = ts.replace(/\D+/g, "").slice(-8);
         const email = cell(r, COL.email);
+        const ts = cell(r, COL.timestamp);
         const emailKey = email.split("@")[0].slice(0, 6);
+        const tsTail = ts.replace(/\D+/g, "").slice(-8);
 
         return {
-          reg_id: `PR-${emailKey}-${tsTail}`,
+          reg_id: `${round === "Priority" ? "PR" : "FR"}-${emailKey}-${tsTail}`,
           source_timestamp: ts,
+          round,
 
-          round: "Priority",
           full_name: cell(r, COL.full_name),
           whatsapp: cell(r, COL.whatsapp),
           email,
 
           college: cell(r, COL.college),
           course: cell(r, COL.course),
-          category: cell(r, COL.category),
+          category: "Delegate",
           ca_code: cell(r, COL.ca_code),
 
           mun_experience: cell(r, COL.mun_experience),
           accommodation: cell(r, COL.accommodation),
 
-          preferences,
+          preferences: {
+            pref1: {
+              committee: cell(r, COL.c1),
+              portfolios: [
+                cell(r, COL.c1_p1),
+                cell(r, COL.c1_p2),
+                cell(r, COL.c1_p3),
+              ].filter(Boolean),
+            },
+            pref2: {
+              committee: cell(r, COL.c2),
+              portfolios: [
+                cell(r, COL.c2_p1),
+                cell(r, COL.c2_p2),
+                cell(r, COL.c2_p3),
+              ].filter(Boolean),
+            },
+            pref3: {
+              committee: cell(r, COL.c3),
+              portfolios: [
+                cell(r, COL.c3_p1),
+                cell(r, COL.c3_p2),
+                cell(r, COL.c3_p3),
+              ].filter(Boolean),
+            },
+          },
+
           status: "Registered",
         };
       });
 
-    // ✅ Deduplicate by email BEFORE upsert
-    const uniqueByEmail = new Map<string, any>();
+    const unique = new Map<string, any>();
     for (const row of payload) {
-      const key = (row.email || "").toLowerCase().trim();
-      if (!key) continue;
-      uniqueByEmail.set(key, row); // latest wins
+      unique.set(row.email.toLowerCase(), row);
     }
-    const dedupedPayload = Array.from(uniqueByEmail.values());
 
     const { error } = await supabaseAdmin
       .from("delegates")
-      .upsert(dedupedPayload, { onConflict: "email" });
+      .upsert([...unique.values()], { onConflict: "email" });
 
-    if (error) throw new Error(error.message);
+    if (error) throw error;
 
-    return Response.json({ ok: true, imported: dedupedPayload.length });
+    return Response.json({ ok: true, imported: unique.size });
   } catch (e: any) {
-    console.error("SYNC ERROR:", e?.message, e);
-    return Response.json(
-      { ok: false, error: e?.message ?? "Unknown error" },
-      { status: 500 }
-    );
+    console.error(e);
+    return Response.json({ ok: false, error: e.message }, { status: 500 });
   }
 }
