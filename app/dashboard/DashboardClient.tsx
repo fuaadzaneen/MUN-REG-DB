@@ -613,6 +613,16 @@ export default function DashboardClient({ rows }: { rows: Row[] }) {
   >
     <Btn variant="ghost">First Round</Btn>
   </a>
+
+
+  <a
+    href="/dashboard?round=Lightning"
+    target="_blank"
+    rel="noopener noreferrer"
+    style={{ textDecoration: "none" }}
+  >
+    <Btn variant="ghost">Lightning Round</Btn>
+  </a>
 </div>
 
       </div>

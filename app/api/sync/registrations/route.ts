@@ -14,7 +14,12 @@ function getSheetsClient() {
   return google.sheets({ version: "v4", auth });
 }
 
-// Separate mappings to handle different column structures in the two sheets
+/**
+ * Column mappings per sheet.
+ * IMPORTANT: If your Lightning sheet column layout differs, update COL_LIGHTNING.
+ */
+
+// Priority sheet mapping
 const COL_PRIORITY = {
   timestamp: 0,
   full_name: 1,
@@ -39,6 +44,7 @@ const COL_PRIORITY = {
   mun_experience: 20,
 };
 
+// First Round sheet mapping (Column C skipped in your sheet)
 const COL_FIRST = {
   timestamp: 0,
   full_name: 1,
@@ -64,6 +70,34 @@ const COL_FIRST = {
   mun_experience: 21,
 };
 
+// Lightning Round sheet mapping (default: same as First Round)
+const COL_LIGHTNING = {
+  timestamp: 0,       // A Timestamp
+  full_name: 1,       // B Name
+  college: 2,         // C College/School
+  course: 3,          // D Course/Grade
+  whatsapp: 4,        // E Contact Number(WhatsApp)
+  email: 5,           // F E-Mail ID
+  ca_code: 6,         // G Campus Ambassador Code
+  mun_experience: 7,  // H Previous MUN Experiences and Prizes(if any)
+  accommodation: 8,   // I Accommodation & Transportation Group
+
+  c1: 9,              // J Committee Preference - 1
+  c1_p1: 10,          // K Portfolio Preference 1
+  c1_p2: 11,          // L Portfolio Preference 2
+  c1_p3: 12,          // M Portfolio Preference 3
+
+  c2: 13,             // N Committee Preference - 2
+  c2_p1: 14,          // O Portfolio Preference 1
+  c2_p2: 15,          // P Portfolio Preference 2
+  c2_p3: 16,          // Q Portfolio Preference 3
+
+  c3: 17,             // R Committee Preference - 3
+  c3_p1: 18,          // S Portfolio Preference 1
+  c3_p2: 19,          // T Portfolio Preference 2
+  c3_p3: 20,          // U Portfolio Preference 3
+};
+
 const cell = (r: any[], i: number) => (r?.[i] ?? "").toString().trim();
 
 export async function POST(req: Request) {
@@ -71,22 +105,27 @@ export async function POST(req: Request) {
     const { searchParams } = new URL(req.url);
     const round = searchParams.get("round");
 
-    if (!round || !["Priority", "First"].includes(round)) {
+    if (!round || !["Priority", "First", "Lightning"].includes(round)) {
       throw new Error("Missing or invalid round");
     }
 
-    // Select the correct mapping based on the round parameter
-    const mapping = round === "Priority" ? COL_PRIORITY : COL_FIRST;
+    // Select correct mapping based on round
+    const mapping =
+      round === "Priority" ? COL_PRIORITY : round === "First" ? COL_FIRST : COL_LIGHTNING;
 
     const SHEET_ID =
       round === "Priority"
         ? process.env.PRIORITY_SHEET_ID
-        : process.env.FIRST_SHEET_ID;
+        : round === "First"
+        ? process.env.FIRST_SHEET_ID
+        : process.env.LIGHTNING_SHEET_ID;
 
     const SHEET_NAME =
       round === "Priority"
         ? process.env.PRIORITY_SHEET_NAME
-        : process.env.FIRST_SHEET_NAME;
+        : round === "First"
+        ? process.env.FIRST_SHEET_NAME
+        : process.env.LIGHTNING_SHEET_NAME;
 
     if (!SHEET_ID || !SHEET_NAME) {
       throw new Error("Missing sheet env vars");
@@ -96,7 +135,7 @@ export async function POST(req: Request) {
 
     const resp = await sheets.spreadsheets.values.get({
       spreadsheetId: SHEET_ID,
-      range: `${SHEET_NAME}!A1:Z`,
+      range: `${SHEET_NAME}!A1:AZ`,
     });
 
     const values = resp.data.values ?? [];
@@ -112,8 +151,10 @@ export async function POST(req: Request) {
         const emailKey = email.split("@")[0].slice(0, 6);
         const tsTail = ts.replace(/\D+/g, "").slice(-8);
 
+        const prefix = round === "Priority" ? "PR" : round === "First" ? "FR" : "LR";
+
         return {
-          reg_id: `${round === "Priority" ? "PR" : "FR"}-${emailKey}-${tsTail}`,
+          reg_id: `${prefix}-${emailKey}-${tsTail}`,
           source_timestamp: ts,
           round,
 
@@ -164,9 +205,9 @@ export async function POST(req: Request) {
       unique.set(row.email.toLowerCase(), row);
     }
 
-    const { error } = await supabaseAdmin
-      .from("delegates")
-      .upsert([...unique.values()], { onConflict: "email" });
+    const { error } = await supabaseAdmin.from("delegates").upsert([...unique.values()], {
+      onConflict: "email",
+    });
 
     if (error) throw error;
 

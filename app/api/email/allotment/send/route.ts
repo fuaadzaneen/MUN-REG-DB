@@ -2,6 +2,7 @@ import { supabaseAdmin } from "@/src/lib/supabase";
 import { getFrom, getTransport } from "@/src/lib/mailer";
 import { renderAllotmentEmail } from "@/src/email/allotmentTemplate";
 import { renderFirstRoundAllotmentEmail } from "@/src/email/allotmentFirstTemplate";
+import { renderLightningRoundAllotmentEmail } from "@/src/email/allotmentLightningTemplate";
 
 export async function POST(req: Request) {
   let id: string | null = null;
@@ -24,7 +25,13 @@ export async function POST(req: Request) {
     }
 
     const mail =
-      d.round === "First"
+      d.round === "Lightning"
+        ? renderLightningRoundAllotmentEmail({
+            name: d.full_name ?? "Delegate",
+            committee: d.allotted_committee,
+            portfolio: d.allotted_portfolio,
+          })
+        : d.round === "First"
         ? renderFirstRoundAllotmentEmail({
             name: d.full_name ?? "Delegate",
             committee: d.allotted_committee,

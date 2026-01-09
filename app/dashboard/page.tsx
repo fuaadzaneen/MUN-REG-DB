@@ -15,7 +15,7 @@ export default async function DashboardPage({
 }: {
   searchParams: Promise<SP>;
 }) {
-  const sp = await searchParams; // ✅ unwrap Promise in your Next version
+  const sp = await searchParams;
 
   const q = first(sp, "q").trim();
   const category = first(sp, "category").trim();
@@ -28,7 +28,6 @@ export default async function DashboardPage({
     .order("created_at", { ascending: false });
 
   if (q) {
-    // search across multiple fields
     query = query.or(
       `full_name.ilike.%${q}%,email.ilike.%${q}%,college.ilike.%${q}%`
     );
@@ -41,21 +40,12 @@ export default async function DashboardPage({
 
   if (error) {
     return (
-      <div style={{ padding: 20 }}>
-        <h2>Dashboard error</h2>
-        <pre style={{ whiteSpace: "pre-wrap" }}>{error.message}</pre>
+      <div style={{ padding: 24, color: "white" }}>
+        <h1>Dashboard error</h1>
+        <pre>{error.message}</pre>
       </div>
     );
   }
 
-  return (
-    <div style={{ padding: 20 }}>
-      <h1 style={{ margin: 0, fontSize: 22 }}>Dashboard</h1>
-      <p style={{ marginTop: 6, opacity: 0.75 }}>
-        Total delegates: <b>{data?.length ?? 0}</b>
-      </p>
-
-      <DashboardClient rows={data ?? []} />
-    </div>
-  );
+  return <DashboardClient rows={data ?? []} />;
 }
